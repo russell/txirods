@@ -34,6 +34,8 @@ class IRODS(Protocol):
         self.num = 139
         self.msg_len = 0
         self.api = 0
+        self.continueProcessing = None
+        self.data = ''
 
     def sendMessage(self, msg_type='', err_len=0, bs_len=0, int_info=0, data=''):
         num = struct.pack('!l', self.num)
@@ -41,6 +43,12 @@ class IRODS(Protocol):
         header = messages.header.substitute({'type':msg_type, 'msg_len':msg_len, 'err_len':err_len, 'bs_len':bs_len, 'int_info':int_info})
         stdout.write("\n--------SEND\n" + str(self.num) + header + data)
         self.transport.write(num + header + data)
+
+    def sendApiReq(self, err_len=0, bs_len=0, int_info=0, data=''):
+        self.sendMessage('RODS_API_REQ', err_len, bs_len, int_info, data)
+
+    def sendDisconnect(self, err_len=0, bs_len=0, int_info=0, data=''):
+        self.sendMessage('RODS_DISCONNECT', err_len, bs_len, int_info, data)
 
     def sendConnect(self, reconnFlag=0, connectCnt=0, proxy_user='', proxy_zone='', client_user='', client_zone='', option=''):
         stdout.write("\nsendConnect\n")
@@ -50,90 +58,85 @@ class IRODS(Protocol):
                                                'client_zone': client_zone, 'option': option})
         self.sendMessage('RODS_CONNECT',data=startup)
 
-    def irods_rods_api_reply(self, data):
-        #stdout.write(repr(data))
-        if self.command == 700:
-            server_info = {}
-            d = struct.unpack('!iI', data[:8])
-            server_info['serverType'] = d[0]
-            server_info['serverBootTime'] = d[1]
-            d = data[8:].split('\0')
-            server_info['relVersion'] = d[0]
-            server_info['apiVersion'] = d[1]
-            server_info['rodsZone'] = d[2]
-            stdout.write(str(server_info))
-            self.nextDeferred.callback(server_info)
-        if self.command == 711:
-            if self.command.data.has_key('stage') and self.command.data['stage'] == 1:
-                context = self.command.data['context']
-                init_cred=self.command.data['cred']
-                target_name=self.command.data['targetName']
-                requests=self.command.data['requests']
-                major,minor,outToken = context.init_context(init_cred=init_cred,
-                                                            target_name=target_name,
-                                                            inputTokenString=data,
-                                                            requests=requests)
-                print "part 2 %s %s" % (str(major), str(minor))
-                self.command.data['stage'] += 1
-                self.data = ''
-                self.transport.write(outToken)
-                return
-            elif self.command.data.has_key('stage') and self.command.data['stage'] == 2:
-                context = self.command.data['context']
-                init_cred=self.command.data['cred']
-                target_name=self.command.data['targetName']
-                requests=self.command.data['requests']
-                major,minor,outToken = context.init_context(init_cred=init_cred,
-                                                            target_name=target_name,
-                                                            inputTokenString=data,
-                                                            requests=requests)
-                print "part 2 %s %s" % (str(major), str(minor))
-                self.command.data['stage'] += 1
-                self.data = ''
-                self.transport.write(outToken)
-                self.num = 139
+    def _rods_api_reply_711(self, data, first=False):
+        if first:
+            if not data:
+                # Already Authed because there was no DN sent
                 self.nextDeferred.callback(data)
                 return
-            else:
-                server_dn = data.split('\0')[0]
-                print server_dn
-                self.command.data['server_dn'] = server_dn
-                # create credential
-                cred = GSSCred()
-                name, mechs, usage  = GSSName(), GSSMechs(), GSSUsage()
-                #usage.set_usage_initiate()
-                cred.acquire_cred(name, mechs, usage)
+            server_dn = data.split('\0')[0]
+            print server_dn
+            self.command.data['server_dn'] = server_dn
+            # create credential
+            init_cred = GSSCred()
+            name, mechs, usage  = GSSName(), GSSMechs(), GSSUsage()
+            #usage.set_usage_initiate()
+            init_cred.acquire_cred(name, mechs, usage)
 
-                lifetime, credName = cred.inquire_cred()
-                context = GSSContext()
-                requests = ContextRequests()
+            lifetime, credName = init_cred.inquire_cred()
+            context = GSSContext()
+            requests = ContextRequests()
 
-                targetName = GSSName()
-                major, minor, targetName_handle = gssc.import_name('arcs-df.vpac.org', gssc.cvar.GSS_C_NT_HOSTBASED_SERVICE)
-                targetName._handle = targetName_handle
+            target_name = GSSName()
+            major, minor, targetName_handle = gssc.import_name('arcs-df.vpac.org', gssc.cvar.GSS_C_NT_HOSTBASED_SERVICE)
+            target_name._handle = targetName_handle
 
-                #requests.set_delegation()
-                requests.set_mutual()
-                requests.set_replay()
+            #requests.set_delegation()
+            requests.set_mutual()
+            requests.set_replay()
+            self.msg_len = 10000000000000
 
-                major,minor,outToken = context.init_context(init_cred=cred,
-                                                            target_name=targetName,
-                                                            inputTokenString='',
-                                                            requests=requests)
+            self.continueProcessing = self._rods_api_reply_711
 
-                self.command.data.update({'name':name, 'lifetime':lifetime, 'credName':credName,
-                                          'targetName':targetName, 'todelete':name,
-                                          'context':context, 'requests':requests, 'cred': cred})
+            self.command.data.update({'name':name, 'lifetime':lifetime, 'credName':credName,
+                                      'targetName':target_name, 'todelete':name,
+                                      'context':context, 'requests':requests, 'cred': init_cred})
+        else:
+            context = self.command.data['context']
+            init_cred=self.command.data['cred']
+            target_name=self.command.data['targetName']
+            requests=self.command.data['requests']
+            self.data = self.data + data
+            data = self.data
 
-                print "part one %s %s" % (str(major), str(minor))
-                print repr(context.inquire())
-                self.command.data['stage'] = 1
-                self.msg_len = 10000000000000
-                self.transport.write(outToken)
-                return
-            #self.nextDeferred.callback(server_dn)
+        try:
+            major,minor,outToken = context.init_context(init_cred=init_cred,
+                                                        target_name=target_name,
+                                                        inputTokenString=data,
+                                                        requests=requests)
+        except GSSContextException:
+            # XXX this doesn't seem to be called, no idea
+            print "WWWWAAAAAAAAAAAAAAHHHHHHH"
+            print GSSContextException
+        else:
+            self.data = ''
 
-    def irods_rods_version(self, data):
+        #self.command.data['stage'] += 1
+        #self.data = ''
+        self.transport.write(outToken)
+        # XXX WTF is with this number?
+        self.num = 139
+        if major == gssc.GSS_S_COMPLETE:
+            # Reset all class variables
+            self.data = ''
+            self.msg_len = 0
+            self.continueProcessing = None
+            self.nextDeferred.callback(data)
+        return
+
+    def _rods_api_reply_700(self, data):
+        server_info = {}
+        d = struct.unpack('!iI', data[:8])
+        server_info['serverType'] = d[0]
+        server_info['serverBootTime'] = d[1]
+        d = data[8:].split('\0')
+        server_info['relVersion'] = d[0]
+        server_info['apiVersion'] = d[1]
+        server_info['rodsZone'] = d[2]
+        stdout.write(str(server_info))
+        self.nextDeferred.callback(server_info)
+
+    def _rods_version(self, data):
         """
         <Version_PI>
         <status>0</status>
@@ -151,7 +154,10 @@ class IRODS(Protocol):
         pass
 
     def dataReceived(self, data):
-        #stdout.write("\n--------RECIEVE\n" + repr(data))
+        if self.continueProcessing:
+            self.continueProcessing(data)
+            return
+        stdout.write("\n--------RECIEVE\n" + repr(data))
         if self.msg_len < 1:
             self.num = struct.unpack('!l', data[:4])[0]
             data = data[4:]
@@ -173,20 +179,18 @@ class IRODS(Protocol):
 
         self.msg_len = self.msg_len - len(data)
 
-        if self.command == 711 and self.command.data.has_key('stage'):
-            if hasattr(self, 'data') and self.command.data.has_key('length'):
-                print "add to buffer"
-                self.data = self.data + data
-            if not self.command.data.has_key('length'):
-                print "init"
-                self.command.data['length'] = struct.unpack('!L', data[:4])[0]
-                self.data = data
-                return
-            data = self.data
+        if self.command == 711:
+            self._rods_api_reply_711(data, True)
+            return
         if data:
-            print 'Calling: irods_' + self.msg_type.lower()
-            if hasattr(self, 'irods_' + self.msg_type.lower()):
-                getattr(self, 'irods_' + self.msg_type.lower())(data)
+            print 'Calling: _' + self.msg_type.lower()
+            if hasattr(self, '_' + self.msg_type.lower()):
+                getattr(self, '_' + self.msg_type.lower())(data)
+                return
+            print 'Calling: _' + self.msg_type.lower() + '_%s' % self.command.int_info
+            if hasattr(self, '_' + self.msg_type.lower() + '_%s' % self.command.int_info):
+                getattr(self, '_' + self.msg_type.lower() + '_%s' % self.command.int_info)(data)
+                return
 
 
 

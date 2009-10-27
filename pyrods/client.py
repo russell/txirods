@@ -151,6 +151,9 @@ def connectionMade(irodsClient):
     #c = IRODSAPICommand(700)
     #c.deferred.addCallbacks(success, fail)
     #irodsClient.queueCommand(c)
+    c = IRODSCommand(irodsClient.sendDisconnect)
+    c.deferred.addCallbacks(success, fail)
+    irodsClient.queueCommand(c)
     c = IRODSCommand(reactor.stop)
     irodsClient.queueCommand(c)
 
