@@ -24,12 +24,15 @@ import struct
 from sys import stdout
 import messages
 from xml.dom import minidom
+from pyGlobus.security import GSSCred, GSSContext, GSSContextException
+from pyGlobus.security import GSSName, GSSMechs, GSSUsage
+from pyGlobus.security import ContextRequests
+from pyGlobus import gssc
 
 class IRODS(Protocol):
     def __init__(self):
         self.num = 139
         self.msg_len = 0
-        self.msg_type = ''
         self.api = 0
 
     def sendMessage(self, msg_type='', err_len=0, bs_len=0, int_info=0, data=''):
@@ -49,16 +52,86 @@ class IRODS(Protocol):
 
     def irods_rods_api_reply(self, data):
         #stdout.write(repr(data))
-        server_info = {}
-        d = struct.unpack('!iI', data[:8])
-        server_info['serverType'] = d[0]
-        server_info['serverBootTime'] = d[1]
-        d = data[8:].split('\0')
-        server_info['relVersion'] = d[0]
-        server_info['apiVersion'] = d[1]
-        server_info['rodsZone'] = d[2]
-        stdout.write(str(server_info))
-        self.nextDeferred.callback(server_info)
+        if self.command == 700:
+            server_info = {}
+            d = struct.unpack('!iI', data[:8])
+            server_info['serverType'] = d[0]
+            server_info['serverBootTime'] = d[1]
+            d = data[8:].split('\0')
+            server_info['relVersion'] = d[0]
+            server_info['apiVersion'] = d[1]
+            server_info['rodsZone'] = d[2]
+            stdout.write(str(server_info))
+            self.nextDeferred.callback(server_info)
+        if self.command == 711:
+            if self.command.data.has_key('stage') and self.command.data['stage'] == 1:
+                context = self.command.data['context']
+                init_cred=self.command.data['cred']
+                target_name=self.command.data['targetName']
+                requests=self.command.data['requests']
+                major,minor,outToken = context.init_context(init_cred=init_cred,
+                                                            target_name=target_name,
+                                                            inputTokenString=data,
+                                                            requests=requests)
+                print "part 2 %s %s" % (str(major), str(minor))
+                self.command.data['stage'] += 1
+                self.data = ''
+                self.transport.write(outToken)
+                return
+            elif self.command.data.has_key('stage') and self.command.data['stage'] == 2:
+                context = self.command.data['context']
+                init_cred=self.command.data['cred']
+                target_name=self.command.data['targetName']
+                requests=self.command.data['requests']
+                major,minor,outToken = context.init_context(init_cred=init_cred,
+                                                            target_name=target_name,
+                                                            inputTokenString=data,
+                                                            requests=requests)
+                print "part 2 %s %s" % (str(major), str(minor))
+                self.command.data['stage'] += 1
+                self.data = ''
+                self.transport.write(outToken)
+                self.num = 139
+                self.nextDeferred.callback(data)
+                return
+            else:
+                server_dn = data.split('\0')[0]
+                print server_dn
+                self.command.data['server_dn'] = server_dn
+                # create credential
+                cred = GSSCred()
+                name, mechs, usage  = GSSName(), GSSMechs(), GSSUsage()
+                #usage.set_usage_initiate()
+                cred.acquire_cred(name, mechs, usage)
+
+                lifetime, credName = cred.inquire_cred()
+                context = GSSContext()
+                requests = ContextRequests()
+
+                targetName = GSSName()
+                major, minor, targetName_handle = gssc.import_name('arcs-df.vpac.org', gssc.cvar.GSS_C_NT_HOSTBASED_SERVICE)
+                targetName._handle = targetName_handle
+
+                #requests.set_delegation()
+                requests.set_mutual()
+                requests.set_replay()
+
+                major,minor,outToken = context.init_context(init_cred=cred,
+                                                            target_name=targetName,
+                                                            inputTokenString='',
+                                                            requests=requests)
+
+                self.command.data.update({'name':name, 'lifetime':lifetime, 'credName':credName,
+                                          'targetName':targetName, 'todelete':name,
+                                          'context':context, 'requests':requests, 'cred': cred})
+
+                print "part one %s %s" % (str(major), str(minor))
+                print repr(context.inquire())
+                self.command.data['stage'] = 1
+                self.msg_len = 10000000000000
+                self.transport.write(outToken)
+                return
+            #self.nextDeferred.callback(server_dn)
 
     def irods_rods_version(self, data):
         """
@@ -78,7 +151,7 @@ class IRODS(Protocol):
         pass
 
     def dataReceived(self, data):
-        stdout.write("\n--------RECIEVE\n" + repr(data))
+        #stdout.write("\n--------RECIEVE\n" + repr(data))
         if self.msg_len < 1:
             self.num = struct.unpack('!l', data[:4])[0]
             data = data[4:]
@@ -100,6 +173,16 @@ class IRODS(Protocol):
 
         self.msg_len = self.msg_len - len(data)
 
+        if self.command == 711 and self.command.data.has_key('stage'):
+            if hasattr(self, 'data') and self.command.data.has_key('length'):
+                print "add to buffer"
+                self.data = self.data + data
+            if not self.command.data.has_key('length'):
+                print "init"
+                self.command.data['length'] = struct.unpack('!L', data[:4])[0]
+                self.data = data
+                return
+            data = self.data
         if data:
             print 'Calling: irods_' + self.msg_type.lower()
             if hasattr(self, 'irods_' + self.msg_type.lower()):

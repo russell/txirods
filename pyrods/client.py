@@ -38,25 +38,39 @@ class IRODSCommand(object):
         return self.command(*self.args, **self.kw)
 
 
+class IRODSAPICommand(IRODSCommand):
+    def __init__(self, int_info, *args, **kw):
+        self.int_info = int_info
+        self.args = args
+        self.kw = kw
+        self.deferred = defer.Deferred()
+        self.state = 0
+        self.data = {}
+
+    def execute(self, irods):
+        return irods.sendMessage('RODS_API_REQ', int_info=self.int_info, *self.args, **self.kw)
+
+    def __cmp__(self, y):
+        return self.int_info.__cmp__(y)
+
+
 
 class IRODSClient(IRODS):
-    def __init__(self):
+    def __init__(self, reactor):
         IRODS.__init__(self)
         self.actionQueue = []
         self.response = []
         self._failed = 0
+        self.command = None
         self.nextDeferred = None
-
-    def msg_rods_version(self, data):
-        IRODS.msg_rods_version(self, data)
-        #self.sendMessage('RODS_API_REQ', int_info=700)
+        self.reactor = reactor
 
     def connectionMade(self):
         IRODS.connectionMade(self)
         self.sendNextCommand()
 
     def sendNextInQueue(self, result):
-        self.sendNextCommand()
+        self.reactor.callLater(1, self.sendNextCommand)
 
     def sendNextCommand(self):
         print "sendNextCommand " + str(self.actionQueue)
@@ -66,9 +80,13 @@ class IRODSClient(IRODS):
         else:
             self.nextDeferred = None
             return
+        self.command = command
         self.nextDeferred = command.deferred
         self.nextDeferred.addCallback(self.sendNextInQueue)
-        command.execute()
+        if isinstance(command, IRODSAPICommand):
+            command.execute(self)
+        else:
+            command.execute()
 
     def queueCommand(self, command):
         self.actionQueue.append(command)
@@ -84,7 +102,7 @@ class IRODSClientFactory(ClientFactory):
         self.deferred = deferred
 
     def buildProtocol(self, addr):
-        p = self.protocol()
+        p = self.protocol(self.reactor)
         self.reactor.callLater(0, self.deferred.callback, p)
         del self.deferred
         p.factory = self
@@ -108,7 +126,7 @@ def success(response):
     if response is None:
         print None
     else:
-        print response
+        print repr(response)
     print '---'
 
 
@@ -116,23 +134,32 @@ def fail(error):
     print 'Failed.  Error was:'
     print error
 
+auth = None
 
 def connectionMade(irodsClient):
     c = IRODSCommand(irodsClient.sendConnect)
     c.deferred.addCallbacks(success, fail)
     irodsClient.queueCommand(c)
-    c = IRODSCommand(irodsClient.sendMessage, 'RODS_API_REQ', int_info=700)
+    c = IRODSAPICommand(711)
+    global auth
+    auth = c
     c.deferred.addCallbacks(success, fail)
     irodsClient.queueCommand(c)
-    #c = IRODSCommand(reactor.stop)
+    c = IRODSAPICommand(711)
+    c.deferred.addCallbacks(success, fail)
+    irodsClient.queueCommand(c)
+    #c = IRODSAPICommand(700)
+    #c.deferred.addCallbacks(success, fail)
     #irodsClient.queueCommand(c)
+    c = IRODSCommand(reactor.stop)
+    irodsClient.queueCommand(c)
 
 
 def main():
     d = defer.Deferred()
     d.addCallback(connectionMade)
     i = IRODSClientFactory(reactor, d)
-    reactor.connectTCP('df.arcs.org.au', 1247, i)
+    reactor.connectTCP('arcs-df.vpac.org', 1247, i)
     reactor.run()
 
 
