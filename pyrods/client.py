@@ -22,6 +22,7 @@
 
 from twisted.internet.protocol import ClientFactory
 from twisted.internet import reactor, defer
+from twisted.python import failure
 
 from protocol import IRODS
 
@@ -68,7 +69,7 @@ class IRODSClient(IRODS):
         self.sendNextCommand()
 
     def sendNextInQueue(self, result):
-        self.reactor.callLater(1, self.sendNextCommand)
+        self.reactor.callLater(0, self.sendNextCommand)
 
     def sendNextCommand(self):
         #print "sendNextCommand " + str(self.actionQueue)
@@ -122,24 +123,24 @@ class IRODSClientFactory(ClientFactory):
         pass
 
     def clientConnectionLost(self, connector, reason):
-        print 'Lost connection.  Reason:', reason
+        print 'Lost connection'
+        reason.printTraceback()
         reactor.stop()
 
     def clientConnectionFailed(self, connector, reason):
-        print 'Connection failed. Reason:', reason
+        print 'Connection failed'
+        reason.printTraceback()
         reactor.stop()
 
 
-def reformat_result(data):
+def parse_sqlResult(data):
     new_data = []
     for col in data.sqlResult:
         for r in range(data.rowCnt):
-            if len(new_data) >= data.rowCnd:
+            if len(new_data) < data.rowCnt:
                 new_data.append({})
-            print r
-            print col.const
             new_data[r][col.const] = col.value[r]
-    print new_data
+    return new_data
 
 def success(response):
     print 'Success!  Got response:'
@@ -151,34 +152,35 @@ def success(response):
     print '---'
 
 
-def fail(error):
-    print 'Failed.  Error was:'
-    print error
+def print_st(error):
+    error.printTraceback()
 
 
 def connectionMade(irodsClient):
     d = irodsClient.queueCommand(irodsClient.sendConnect)
-    d.addCallbacks(success, fail)
+    d.addCallbacks(success, print_st)
 
     c = irodsClient.queueAPICommand(711)
-    d.addCallbacks(success, fail)
+    d.addCallbacks(success, print_st)
     c = irodsClient.queueAPICommand(711)
-    d.addCallbacks(success, fail)
+    d.addCallbacks(success, print_st)
 
     d = irodsClient.queueCommand(irodsClient.obj_stat, '/ARCS/home/russell.sim')
-    d.addCallbacks(success, fail)
+    d.addCallbacks(success, print_st)
 
     d = irodsClient.queueCommand(irodsClient.list_objects, '/ARCS/home/russell.sim')
-    d.addCallbacks(success, fail)
+    d.addCallbacks(parse_sqlResult, print_st)
+    d.addCallbacks(success, print_st)
 
     d = irodsClient.queueCommand(irodsClient.list_collections, '/ARCS/home')
-    d.addCallbacks(success, fail)
+    d.addCallbacks(parse_sqlResult, print_st)
+    d.addCallbacks(success, print_st)
 
     d = irodsClient.queueCommand(irodsClient.sendDisconnect)
-    d.addCallbacks(success, fail)
+    d.addCallbacks(success, print_st)
 
     d = irodsClient.queueCommand(reactor.stop)
-    d.addCallbacks(success, fail)
+    d.addCallbacks(success, print_st)
 
 
 def main():

@@ -45,7 +45,7 @@ class IRODS(Protocol):
         msg_len = len(data)
         self.int_info = int(int_info)
         header = messages.header.substitute({'type':msg_type, 'msg_len':msg_len, 'err_len':err_len, 'bs_len':bs_len, 'int_info':int_info})
-        stdout.write("\n--------SEND\n" + str(self.num) + header + repr(data))
+        #stdout.write("\n--------SEND\n" + str(self.num) + header + repr(data))
         self.transport.write(num + header + data)
 
     def list_objects(self, path=''):
@@ -115,7 +115,6 @@ class IRODS(Protocol):
         try:
             data = messages.genQueryOut.parse(data)
         except:
-            print repr(data)
             self.nextDeferred.errback(failure.Failure())
         else:
             self.nextDeferred.callback(data)
@@ -225,7 +224,7 @@ class IRODS(Protocol):
         if self.continueProcessing:
             self.continueProcessing(data)
             return
-        stdout.write("\n--------RECIEVE\n" + repr(data))
+        #stdout.write("\n--------RECIEVE\n" + repr(data))
         if self.msg_len < 1:
             #self.num = struct.unpack('!l', data[:4])[0]
             data = data[4:]
