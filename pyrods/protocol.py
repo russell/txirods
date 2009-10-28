@@ -28,6 +28,7 @@ from pyGlobus.security import GSSCred, GSSContext, GSSContextException
 from pyGlobus.security import GSSName, GSSMechs, GSSUsage
 from pyGlobus.security import ContextRequests
 from pyGlobus import gssc
+from construct import Container
 
 class IRODS(Protocol):
     def __init__(self):
@@ -37,18 +38,45 @@ class IRODS(Protocol):
         self.continueProcessing = None
         self.data = ''
 
+
     def sendMessage(self, msg_type='', err_len=0, bs_len=0, int_info=0, data=''):
         num = struct.pack('!l', self.num)
         msg_len = len(data)
+        self.int_info = int(int_info)
         header = messages.header.substitute({'type':msg_type, 'msg_len':msg_len, 'err_len':err_len, 'bs_len':bs_len, 'int_info':int_info})
-        stdout.write("\n--------SEND\n" + str(self.num) + header + data)
+        stdout.write("\n--------SEND\n" + str(self.num) + header + repr(data))
         self.transport.write(num + header + data)
 
-    def sendApiReq(self, err_len=0, bs_len=0, int_info=0, data=''):
+    def list_collections(self, path=''):
+        data = Container(keyValPair = Container(keyWords = None, len = 0, values = None),
+                         continueInx = 0,
+                         inxIvalPair = Container(
+                            len = 7,
+                            inx = [501, 403, 401, 421, 407, 420, 419],
+                            value = [1, 1, 1, 1, 1, 1, 1]),
+                         inxValPair = Container(
+                            len = 1,
+                            inx = [501],
+                            value = [" = '%s'" % path]),
+                         maxRows = 500, options = 32, partialStartIndex = 0)
+        self.sendApiReq(int_info=702, data=messages.genQueryInp.build(data))
+
+
+    def obj_stat(self, path=''):
+        data = Container(keyValPair = Container(keyWords = None, len = 0, values = None),
+                         createMode = 0, dataSize = 0, numThreads = 0, objPath = path,
+                         offset = 0, openFlags = 0, oprType = 0, specColl = None)
+        self.sendApiReq(int_info=633, data=messages.dataObjInp.build(data))
+
+
+    def sendApiReq(self, int_info=0, err_len=0, bs_len=0, data=''):
         self.sendMessage('RODS_API_REQ', err_len, bs_len, int_info, data)
 
+
     def sendDisconnect(self, err_len=0, bs_len=0, int_info=0, data=''):
+        self.num = 140
         self.sendMessage('RODS_DISCONNECT', err_len, bs_len, int_info, data)
+
 
     def sendConnect(self, reconnFlag=0, connectCnt=0, proxy_user='', proxy_zone='', client_user='', client_zone='', option=''):
         stdout.write("\nsendConnect\n")
@@ -58,18 +86,31 @@ class IRODS(Protocol):
                                                'client_zone': client_zone, 'option': option})
         self.sendMessage('RODS_CONNECT',data=startup)
 
+
+    def _rods_api_reply_633(self, data):
+        data = messages.rodsObjStat.parse(data)
+        self.nextDeferred.callback(str(data))
+
+    def _rods_api_reply_702(self, data, first=False):
+        data = messages.genQueryOut.parse(data)
+        self.nextDeferred.callback(data)
+
     def _rods_api_reply_711(self, data, first=False):
         if first:
             if not data:
-                # Already Authed because there was no DN sent
-                self.nextDeferred.callback(data)
+                # Already Authed because there was no DN recieved from the server
+
+                # XXX Set num again to some other random value
+                self.num = 141
+                self.reactor.callLater(0.001, self.sendNextCommand)
+                self.nextDeferred.callback(None)
                 return
             server_dn = data.split('\0')[0]
             print server_dn
             self.command.data['server_dn'] = server_dn
             # create credential
             init_cred = GSSCred()
-            name, mechs, usage  = GSSName(), GSSMechs(), GSSUsage()
+            name, mechs, usage  = GSSName(free=False), GSSMechs(), GSSUsage()
             #usage.set_usage_initiate()
             init_cred.acquire_cred(name, mechs, usage)
 
@@ -106,13 +147,10 @@ class IRODS(Protocol):
                                                         requests=requests)
         except GSSContextException:
             # XXX this doesn't seem to be called, no idea
-            print "WWWWAAAAAAAAAAAAAAHHHHHHH"
             print GSSContextException
         else:
             self.data = ''
 
-        #self.command.data['stage'] += 1
-        #self.data = ''
         self.transport.write(outToken)
         # XXX WTF is with this number?
         self.num = 139
@@ -121,8 +159,10 @@ class IRODS(Protocol):
             self.data = ''
             self.msg_len = 0
             self.continueProcessing = None
-            self.nextDeferred.callback(data)
+            self.reactor.callLater(0.001, self.sendNextCommand)
+            self.nextDeferred.callback(True)
         return
+
 
     def _rods_api_reply_700(self, data):
         server_info = {}
@@ -135,6 +175,7 @@ class IRODS(Protocol):
         server_info['rodsZone'] = d[2]
         stdout.write(str(server_info))
         self.nextDeferred.callback(server_info)
+
 
     def _rods_version(self, data):
         """
@@ -150,16 +191,18 @@ class IRODS(Protocol):
         #stdout.write(data)
         self.nextDeferred.callback(data)
 
+
     def responseReceived(self):
         pass
+
 
     def dataReceived(self, data):
         if self.continueProcessing:
             self.continueProcessing(data)
             return
-        stdout.write("\n--------RECIEVE\n" + repr(data))
+        #stdout.write("\n--------RECIEVE\n" + repr(data))
         if self.msg_len < 1:
-            self.num = struct.unpack('!l', data[:4])[0]
+            #self.num = struct.unpack('!l', data[:4])[0]
             data = data[4:]
             #stdout.write(data)
 
@@ -179,7 +222,7 @@ class IRODS(Protocol):
 
         self.msg_len = self.msg_len - len(data)
 
-        if self.command == 711:
+        if self.int_info == 711:
             self._rods_api_reply_711(data, True)
             return
         if data:
@@ -187,9 +230,9 @@ class IRODS(Protocol):
             if hasattr(self, '_' + self.msg_type.lower()):
                 getattr(self, '_' + self.msg_type.lower())(data)
                 return
-            print 'Calling: _' + self.msg_type.lower() + '_%s' % self.command.int_info
-            if hasattr(self, '_' + self.msg_type.lower() + '_%s' % self.command.int_info):
-                getattr(self, '_' + self.msg_type.lower() + '_%s' % self.command.int_info)(data)
+            print 'Calling: _' + self.msg_type.lower() + '_%s' % self.int_info
+            if hasattr(self, '_' + self.msg_type.lower() + '_%s' % self.int_info):
+                getattr(self, '_' + self.msg_type.lower() + '_%s' % self.int_info)(data)
                 return
 
 

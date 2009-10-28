@@ -22,7 +22,6 @@
 
 from twisted.internet.protocol import ClientFactory
 from twisted.internet import reactor, defer
-import string
 
 from protocol import IRODS
 
@@ -58,12 +57,11 @@ class IRODSAPICommand(IRODSCommand):
 class IRODSClient(IRODS):
     def __init__(self, reactor):
         IRODS.__init__(self)
+        self.reactor = reactor
         self.actionQueue = []
-        self.response = []
         self._failed = 0
         self.command = None
         self.nextDeferred = None
-        self.reactor = reactor
 
     def connectionMade(self):
         IRODS.connectionMade(self)
@@ -73,7 +71,7 @@ class IRODSClient(IRODS):
         self.reactor.callLater(1, self.sendNextCommand)
 
     def sendNextCommand(self):
-        print "sendNextCommand " + str(self.actionQueue)
+        #print "sendNextCommand " + str(self.actionQueue)
         if self.actionQueue:
             print "Command"
             command = self.actionQueue.pop(0)
@@ -82,10 +80,10 @@ class IRODSClient(IRODS):
             return
         self.command = command
         self.nextDeferred = command.deferred
-        self.nextDeferred.addCallback(self.sendNextInQueue)
         if isinstance(command, IRODSAPICommand):
             command.execute(self)
         else:
+            self.nextDeferred.addCallback(self.sendNextInQueue)
             command.execute()
 
     def queueCommand(self, command):
@@ -97,14 +95,15 @@ class IRODSClient(IRODS):
 class IRODSClientFactory(ClientFactory):
     protocol = IRODSClient
 
-    def __init__(self, reactor, deferred):
+    def __init__(self, reactor, deferred=None):
         self.reactor = reactor
         self.deferred = deferred
 
     def buildProtocol(self, addr):
         p = self.protocol(self.reactor)
-        self.reactor.callLater(0, self.deferred.callback, p)
-        del self.deferred
+        if self.deferred:
+            self.reactor.callLater(0, self.deferred.callback, p)
+            del self.deferred
         p.factory = self
         return p
 
@@ -126,7 +125,7 @@ def success(response):
     if response is None:
         print None
     else:
-        print repr(response)
+        print response
     print '---'
 
 
@@ -134,23 +133,23 @@ def fail(error):
     print 'Failed.  Error was:'
     print error
 
-auth = None
 
 def connectionMade(irodsClient):
     c = IRODSCommand(irodsClient.sendConnect)
     c.deferred.addCallbacks(success, fail)
     irodsClient.queueCommand(c)
     c = IRODSAPICommand(711)
-    global auth
-    auth = c
     c.deferred.addCallbacks(success, fail)
     irodsClient.queueCommand(c)
     c = IRODSAPICommand(711)
     c.deferred.addCallbacks(success, fail)
     irodsClient.queueCommand(c)
-    #c = IRODSAPICommand(700)
-    #c.deferred.addCallbacks(success, fail)
-    #irodsClient.queueCommand(c)
+    c = IRODSCommand(irodsClient.obj_stat, '/ARCS/home/russell.sim')
+    c.deferred.addCallbacks(success, fail)
+    irodsClient.queueCommand(c)
+    c = IRODSCommand(irodsClient.list_collections, '/ARCS/home/russell.sim')
+    c.deferred.addCallbacks(success, fail)
+    irodsClient.queueCommand(c)
     c = IRODSCommand(irodsClient.sendDisconnect)
     c.deferred.addCallbacks(success, fail)
     irodsClient.queueCommand(c)
