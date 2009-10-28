@@ -20,6 +20,7 @@
 #############################################################################
 
 from twisted.internet.protocol import Protocol
+from twisted.python import failure
 import struct
 from sys import stdout
 import messages
@@ -47,7 +48,7 @@ class IRODS(Protocol):
         stdout.write("\n--------SEND\n" + str(self.num) + header + repr(data))
         self.transport.write(num + header + data)
 
-    def list_collections(self, path=''):
+    def list_objects(self, path=''):
         data = Container(keyValPair = Container(keyWords = None, len = 0, values = None),
                          continueInx = 0,
                          inxIvalPair = Container(
@@ -57,6 +58,21 @@ class IRODS(Protocol):
                          inxValPair = Container(
                             len = 1,
                             inx = [501],
+                            value = [" = '%s'" % path]),
+                         maxRows = 500, options = 32, partialStartIndex = 0)
+        self.sendApiReq(int_info=702, data=messages.genQueryInp.build(data))
+
+
+    def list_collections(self, path=''):
+        data = Container(keyValPair = Container(keyWords = None, len = 0, values = None),
+                         continueInx = 0,
+                         inxIvalPair = Container(
+                            len = 7,
+                            inx = [501, 503, 508, 509, 510, 511, 512],
+                            value = [1, 1, 1, 1, 1, 1, 1]),
+                         inxValPair = Container(
+                            len = 1,
+                            inx = [502],
                             value = [" = '%s'" % path]),
                          maxRows = 500, options = 32, partialStartIndex = 0)
         self.sendApiReq(int_info=702, data=messages.genQueryInp.build(data))
@@ -88,12 +104,21 @@ class IRODS(Protocol):
 
 
     def _rods_api_reply_633(self, data):
-        data = messages.rodsObjStat.parse(data)
-        self.nextDeferred.callback(str(data))
+        try:
+            data = messages.rodsObjStat.parse(data)
+        except:
+            self.nextDeferred.errback(failure.Failure())
+        else:
+            self.nextDeferred.callback(str(data))
 
     def _rods_api_reply_702(self, data, first=False):
-        data = messages.genQueryOut.parse(data)
-        self.nextDeferred.callback(data)
+        try:
+            data = messages.genQueryOut.parse(data)
+        except:
+            print repr(data)
+            self.nextDeferred.errback(failure.Failure())
+        else:
+            self.nextDeferred.callback(data)
 
     def _rods_api_reply_711(self, data, first=False):
         if first:
@@ -200,7 +225,7 @@ class IRODS(Protocol):
         if self.continueProcessing:
             self.continueProcessing(data)
             return
-        #stdout.write("\n--------RECIEVE\n" + repr(data))
+        stdout.write("\n--------RECIEVE\n" + repr(data))
         if self.msg_len < 1:
             #self.num = struct.unpack('!l', data[:4])[0]
             data = data[4:]
@@ -226,11 +251,11 @@ class IRODS(Protocol):
             self._rods_api_reply_711(data, True)
             return
         if data:
-            print 'Calling: _' + self.msg_type.lower()
+            #print 'Calling: _' + self.msg_type.lower()
             if hasattr(self, '_' + self.msg_type.lower()):
                 getattr(self, '_' + self.msg_type.lower())(data)
                 return
-            print 'Calling: _' + self.msg_type.lower() + '_%s' % self.int_info
+            #print 'Calling: _' + self.msg_type.lower() + '_%s' % self.int_info
             if hasattr(self, '_' + self.msg_type.lower() + '_%s' % self.int_info):
                 getattr(self, '_' + self.msg_type.lower() + '_%s' % self.int_info)(data)
                 return

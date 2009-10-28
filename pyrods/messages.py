@@ -173,7 +173,7 @@ sqlResult = Struct('sqlResult',
                    UBInt32('len'),
                    Select('value',
                           Null_Pointer,
-                          CString('value')
+                          MetaArray(lambda c: c._.rowCnt, CString('value'))
                          ),
                   )
 
@@ -183,6 +183,6 @@ genQueryOut = Struct('genQueryOut',
                      UBInt32('attriCnt'),
                      UBInt32('continueInx'),
                      UBInt32('totalRowCount'),
-                     MetaArray(lambda c: c.rowCnt, Array(50, sqlResult)),
+                     MetaArray(lambda c: c.attriCnt, (sqlResult)),
                     )
 
