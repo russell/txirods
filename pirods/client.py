@@ -22,7 +22,6 @@
 
 from twisted.internet.protocol import ClientFactory
 from twisted.internet import reactor, defer
-from twisted.python import failure
 
 from protocol import IRODS
 
@@ -74,7 +73,6 @@ class IRODSClient(IRODS):
     def sendNextCommand(self):
         #print "sendNextCommand " + str(self.actionQueue)
         if self.actionQueue:
-            print "Command"
             command = self.actionQueue.pop(0)
         else:
             self.nextDeferred = None
@@ -154,6 +152,9 @@ def success(response):
 
 def print_st(error):
     error.printTraceback()
+    print "-------------------------------"
+    # Should close connection cleanly
+    reactor.stop()
 
 
 def connectionMade(irodsClient):

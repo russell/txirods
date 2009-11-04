@@ -20,20 +20,20 @@
 #############################################################################
 
 from twisted.internet.protocol import Protocol
-from twisted.python import failure
+from twisted.python import log, failure
 import struct
 from sys import stdout
 import messages
 from xml.dom import minidom
 from pyGlobus.security import GSSCred, GSSContext, GSSContextException
 from pyGlobus.security import GSSName, GSSMechs, GSSUsage
-from pyGlobus.security import ContextRequests
+from pyGlobus.security import ContextRequests, GSSCredException
 from pyGlobus import gssc
 from construct import Container
+import logging
 
 class IRODS(Protocol):
     def __init__(self):
-        self.num = 139
         self.msg_len = 0
         self.api = 0
         self.continueProcessing = None
@@ -41,11 +41,11 @@ class IRODS(Protocol):
 
 
     def sendMessage(self, msg_type='', err_len=0, bs_len=0, int_info=0, data=''):
-        num = struct.pack('!l', self.num)
         msg_len = len(data)
         self.int_info = int(int_info)
         header = messages.header.substitute({'type':msg_type, 'msg_len':msg_len, 'err_len':err_len, 'bs_len':bs_len, 'int_info':int_info})
-        #stdout.write("\n--------SEND\n" + str(self.num) + header + repr(data))
+        log.msg("\n--------SEND\n" + header + repr(data), debug=True)
+        num = struct.pack('!L', len(header))
         self.transport.write(num + header + data)
 
     def list_objects(self, path=''):
@@ -90,12 +90,11 @@ class IRODS(Protocol):
 
 
     def sendDisconnect(self, err_len=0, bs_len=0, int_info=0, data=''):
-        self.num = 140
         self.sendMessage('RODS_DISCONNECT', err_len, bs_len, int_info, data)
 
 
     def sendConnect(self, reconnFlag=0, connectCnt=0, proxy_user='', proxy_zone='', client_user='', client_zone='', option=''):
-        stdout.write("\nsendConnect\n")
+        log.msg("\nsendConnect\n", logging.INFO)
         startup = messages.connect.substitute({'irodsProt':self.api, 'reconnFlag': reconnFlag,
                                                'connectCnt': connectCnt, 'proxy_user':proxy_user,
                                                'proxy_zone': proxy_zone, 'client_user': client_user,
@@ -125,7 +124,6 @@ class IRODS(Protocol):
                 # Already Authed because there was no DN recieved from the server
 
                 # XXX Set num again to some other random value
-                self.num = 141
                 self.reactor.callLater(0.001, self.sendNextCommand)
                 self.nextDeferred.callback(None)
                 return
@@ -136,9 +134,16 @@ class IRODS(Protocol):
             init_cred = GSSCred()
             name, mechs, usage  = GSSName(free=False), GSSMechs(), GSSUsage()
             #usage.set_usage_initiate()
-            init_cred.acquire_cred(name, mechs, usage)
+            try:
+                init_cred.acquire_cred(name, mechs, usage)
+            except GSSCredException:
+                self.nextDeferred.errback(failure.Failure())
 
-            lifetime, credName = init_cred.inquire_cred()
+            try:
+                lifetime, credName = init_cred.inquire_cred()
+            except GSSCredException:
+                self.nextDeferred.errback(failure.Failure())
+
             context = GSSContext()
             requests = ContextRequests()
 
@@ -177,7 +182,6 @@ class IRODS(Protocol):
 
         self.transport.write(outToken)
         # XXX WTF is with this number?
-        self.num = 139
         if major == gssc.GSS_S_COMPLETE:
             # Reset all class variables
             self.data = ''
@@ -224,9 +228,8 @@ class IRODS(Protocol):
         if self.continueProcessing:
             self.continueProcessing(data)
             return
-        #stdout.write("\n--------RECIEVE\n" + repr(data))
+        log.msg("\n--------RECIEVE\n" + repr(data), debug=True)
         if self.msg_len < 1:
-            #self.num = struct.unpack('!l', data[:4])[0]
             data = data[4:]
             #stdout.write(data)
 

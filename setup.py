@@ -1,9 +1,9 @@
 from setuptools import setup, find_packages
 import sys, os
 
-version = '0.0'
+version = '0.1'
 
-setup(name='pyrods',
+setup(name='pirods',
       version=version,
       description="a native interface to iRODS",
       long_description="""\
@@ -23,6 +23,6 @@ setup(name='pyrods',
       entry_points="""
       # -*- Entry points: -*-
       [console_scripts]
-      pyrods = pyrods.client:main
+      pirods = pirods.client:main
       """,
       )
