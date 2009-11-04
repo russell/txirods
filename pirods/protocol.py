@@ -20,7 +20,8 @@
 #############################################################################
 
 from twisted.internet.protocol import Protocol
-from twisted.python import log, failure
+from twisted.protocols import basic
+from twisted.python import log, failure, filepath
 import struct
 from sys import stdout
 import messages
@@ -112,6 +113,30 @@ class IRODS(Protocol):
                          oprType = 0,
                          specColl = None)
         self.sendApiReq(int_info=633, data=messages.dataObjInp.build(data))
+
+    def put(self, file=None, remotefile=None):
+        """
+        send a file to irods
+        """
+        f = filepath.FilePath(file)
+        size = f.getsize()
+
+        data = Container(createMode = 33261,
+                         dataSize = size,
+                         keyValPair = Container(
+                             len = 2,
+                             keyWords = ['dataType', 'dataIncluded'],
+                             values = ['generic', '']),
+                         numThreads = 0,
+                         objPath = remotefile,
+                         offset = 0,
+                         openFlags = 2,
+                         oprType = 1,
+                         specColl = None)
+        self.sendApiReq(int_info=606, bs_len=size, data=messages.dataObjInp.build(data))
+        p = f.open('rb')
+        d = basic.FileSender().beginFileTransfer(p, self.transport)
+        d.addCallback(self.nextDeferred.callback)
 
 
     def sendApiReq(self, int_info=0, err_len=0, bs_len=0, data=''):

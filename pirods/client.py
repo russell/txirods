@@ -175,6 +175,9 @@ def connectionMade(irodsClient):
     d.addCallbacks(parse_sqlResult, print_st)
     d.addCallbacks(success, print_st)
 
+    d = irodsClient.queueCommand(irodsClient.put ,'/home/russell/perl.pm' ,'/ARCS/home/russell.sim/perl.pm')
+    d.addCallbacks(success, print_st)
+
     d = irodsClient.queueCommand(irodsClient.sendDisconnect)
     d.addCallbacks(success, print_st)
 

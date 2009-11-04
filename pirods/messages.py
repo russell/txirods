@@ -186,3 +186,4 @@ genQueryOut = Struct('genQueryOut',
                      MetaArray(lambda c: c.attriCnt, (sqlResult)),
                     )
 
+
