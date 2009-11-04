@@ -42,6 +42,9 @@ class IRODS(Protocol):
 
     def sendMessage(self, msg_type='', err_len=0, bs_len=0, int_info=0,
                     data=''):
+        """
+        wrap an irods message with a header and send it
+        """
         msg_len = len(data)
         self.int_info = int(int_info)
         header = messages.header.substitute({'type':msg_type,
@@ -49,11 +52,14 @@ class IRODS(Protocol):
                                              'err_len':err_len,
                                              'bs_len':bs_len,
                                              'int_info':int_info})
-        log.msg("\n--------SEND\n" + header + repr(data), debug=True)
+        #log.msg("\n--------SEND\n" + header + repr(data), debug=True)
         num = struct.pack('!L', len(header))
         self.transport.write(num + header + data)
 
     def list_objects(self, path=''):
+        """
+        list the objects in a collection at path
+        """
         data = Container(keyValPair = Container(len = 0,
                                                 keyWords = None,
                                                 values = None),
@@ -71,6 +77,9 @@ class IRODS(Protocol):
 
 
     def list_collections(self, path=''):
+        """
+        list the collections in a collection at path
+        """
         data = Container(keyValPair = Container(len = 0,
                                                 keyWords = None,
                                                 values = None),
@@ -88,6 +97,9 @@ class IRODS(Protocol):
 
 
     def obj_stat(self, path=''):
+        """
+        stat the details of an object
+        """
         data = Container(keyValPair = Container(len = 0,
                                                 keyWords = None,
                                                 values = None),
