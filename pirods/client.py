@@ -22,6 +22,8 @@
 
 from twisted.internet.protocol import ClientFactory
 from twisted.internet import reactor, defer
+from twisted.python import log
+import sys
 
 from protocol import IRODS
 
@@ -121,12 +123,12 @@ class IRODSClientFactory(ClientFactory):
         pass
 
     def clientConnectionLost(self, connector, reason):
-        print 'Lost connection'
+        log.msg('Lost connection')
         reason.printTraceback()
         reactor.stop()
 
     def clientConnectionFailed(self, connector, reason):
-        print 'Connection failed'
+        log.err('Connection failed')
         reason.printTraceback()
         reactor.stop()
 
@@ -141,18 +143,14 @@ def parse_sqlResult(data):
     return new_data
 
 def success(response):
-    print 'Success!  Got response:'
-    print '---'
     if response is None:
-        print None
+        log.msg('Success!  Got response')
     else:
-        print response
-    print '---'
+        log.msg('Success!  Got response\n' + str(response))
 
 
 def print_st(error):
-    error.printTraceback()
-    print "-------------------------------"
+    log.err(error.printTraceback())
     # Should close connection cleanly
     reactor.stop()
 
@@ -188,6 +186,7 @@ def main():
     d = defer.Deferred()
     d.addCallback(connectionMade)
     i = IRODSClientFactory(reactor, d)
+    log.startLogging(sys.stdout)
     reactor.connectTCP('arcs-df.vpac.org', 1247, i)
     reactor.run()
 

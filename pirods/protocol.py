@@ -40,16 +40,23 @@ class IRODS(Protocol):
         self.data = ''
 
 
-    def sendMessage(self, msg_type='', err_len=0, bs_len=0, int_info=0, data=''):
+    def sendMessage(self, msg_type='', err_len=0, bs_len=0, int_info=0,
+                    data=''):
         msg_len = len(data)
         self.int_info = int(int_info)
-        header = messages.header.substitute({'type':msg_type, 'msg_len':msg_len, 'err_len':err_len, 'bs_len':bs_len, 'int_info':int_info})
+        header = messages.header.substitute({'type':msg_type,
+                                             'msg_len':msg_len,
+                                             'err_len':err_len,
+                                             'bs_len':bs_len,
+                                             'int_info':int_info})
         log.msg("\n--------SEND\n" + header + repr(data), debug=True)
         num = struct.pack('!L', len(header))
         self.transport.write(num + header + data)
 
     def list_objects(self, path=''):
-        data = Container(keyValPair = Container(keyWords = None, len = 0, values = None),
+        data = Container(keyValPair = Container(len = 0,
+                                                keyWords = None,
+                                                values = None),
                          continueInx = 0,
                          inxIvalPair = Container(
                             len = 7,
@@ -64,7 +71,9 @@ class IRODS(Protocol):
 
 
     def list_collections(self, path=''):
-        data = Container(keyValPair = Container(keyWords = None, len = 0, values = None),
+        data = Container(keyValPair = Container(len = 0,
+                                                keyWords = None,
+                                                values = None),
                          continueInx = 0,
                          inxIvalPair = Container(
                             len = 7,
@@ -79,9 +88,17 @@ class IRODS(Protocol):
 
 
     def obj_stat(self, path=''):
-        data = Container(keyValPair = Container(keyWords = None, len = 0, values = None),
-                         createMode = 0, dataSize = 0, numThreads = 0, objPath = path,
-                         offset = 0, openFlags = 0, oprType = 0, specColl = None)
+        data = Container(keyValPair = Container(len = 0,
+                                                keyWords = None,
+                                                values = None),
+                         createMode = 0,
+                         dataSize = 0,
+                         numThreads = 0,
+                         objPath = path,
+                         offset = 0,
+                         openFlags = 0,
+                         oprType = 0,
+                         specColl = None)
         self.sendApiReq(int_info=633, data=messages.dataObjInp.build(data))
 
 
@@ -103,6 +120,9 @@ class IRODS(Protocol):
 
 
     def _rods_api_reply_633(self, data):
+        """
+        irods object stat reply
+        """
         try:
             data = messages.rodsObjStat.parse(data)
         except:
@@ -111,6 +131,9 @@ class IRODS(Protocol):
             self.nextDeferred.callback(str(data))
 
     def _rods_api_reply_702(self, data, first=False):
+        """
+        irods gen query reply
+        """
         try:
             data = messages.genQueryOut.parse(data)
         except:
@@ -119,6 +142,9 @@ class IRODS(Protocol):
             self.nextDeferred.callback(data)
 
     def _rods_api_reply_711(self, data, first=False):
+        """
+        irods GSI auth reply
+        """
         if first:
             if not data:
                 # Already Authed because there was no DN recieved from the server
@@ -128,21 +154,24 @@ class IRODS(Protocol):
                 self.nextDeferred.callback(None)
                 return
             server_dn = data.split('\0')[0]
-            print server_dn
+            log.msg(server_dn)
             self.command.data['server_dn'] = server_dn
+
             # create credential
             init_cred = GSSCred()
             name, mechs, usage  = GSSName(free=False), GSSMechs(), GSSUsage()
-            #usage.set_usage_initiate()
+
             try:
                 init_cred.acquire_cred(name, mechs, usage)
             except GSSCredException:
-                self.nextDeferred.errback(failure.Failure())
+                self.nextDeferred.errback()
+                return
 
             try:
                 lifetime, credName = init_cred.inquire_cred()
             except GSSCredException:
-                self.nextDeferred.errback(failure.Failure())
+                self.nextDeferred.errback()
+                return
 
             context = GSSContext()
             requests = ContextRequests()
@@ -154,6 +183,8 @@ class IRODS(Protocol):
             #requests.set_delegation()
             requests.set_mutual()
             requests.set_replay()
+
+            # XXX not really sure if this is needed anymore
             self.msg_len = 10000000000000
 
             self.continueProcessing = self._rods_api_reply_711
@@ -193,6 +224,9 @@ class IRODS(Protocol):
 
 
     def _rods_api_reply_700(self, data):
+        """
+        irods server info reply
+        """
         server_info = {}
         d = struct.unpack('!iI', data[:8])
         server_info['serverType'] = d[0]
@@ -201,12 +235,14 @@ class IRODS(Protocol):
         server_info['relVersion'] = d[0]
         server_info['apiVersion'] = d[1]
         server_info['rodsZone'] = d[2]
-        stdout.write(str(server_info))
+        log.msg(str(server_info))
         self.nextDeferred.callback(server_info)
 
 
     def _rods_version(self, data):
         """
+        irods version reply
+
         <Version_PI>
         <status>0</status>
         <relVersion>rods2.1</relVersion>
@@ -216,28 +252,23 @@ class IRODS(Protocol):
         <cookie>0</cookie>
         </Version_PI>
         """
-        #stdout.write(data)
         self.nextDeferred.callback(data)
 
 
     def responseReceived(self):
-        pass
+        log.msg('Response Received', logging.INFO)
 
 
     def dataReceived(self, data):
         if self.continueProcessing:
             self.continueProcessing(data)
             return
-        log.msg("\n--------RECIEVE\n" + repr(data), debug=True)
+        #log.msg("\n--------RECIEVE\n" + repr(data), debug=True)
         if self.msg_len < 1:
-            data = data[4:]
-            #stdout.write(data)
-
-            if data.startswith('<MsgHeader_PI>'):
-                eom = '</MsgHeader_PI>\n'
-                seperator = data.index(eom) + len(eom)
-                header = data[:seperator]
-                data = data[seperator:]
+            if data[4:].startswith('<MsgHeader_PI>'):
+                eom = struct.unpack('!L', data[:4])[0] + 4
+                header = data[4:eom]
+                data = data[eom:]
                 msg = minidom.parseString(header)
                 msg_type = msg.getElementsByTagName('type')[0].childNodes[0].data
                 msg_len = msg.getElementsByTagName('msgLen')[0].childNodes[0].data
