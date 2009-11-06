@@ -28,6 +28,7 @@ from zope.interface import implements
 import struct
 from sys import stdout
 import messages
+import errors
 from xml.dom import minidom
 from pyGlobus.security import GSSCred, GSSContext, GSSContextException
 from pyGlobus.security import GSSName, GSSMechs, GSSUsage
@@ -358,9 +359,13 @@ class IRODS(Protocol):
                 msg_len = msg.getElementsByTagName('msgLen')[0].childNodes[0].data
                 err_len = msg.getElementsByTagName('errorLen')[0].childNodes[0].data
                 bs_len = msg.getElementsByTagName('bsLen')[0].childNodes[0].data
-                intinfo = msg.getElementsByTagName('intInfo')[0].childNodes[0].data
+                intinfo = int(msg.getElementsByTagName('intInfo')[0].childNodes[0].data)
                 self.msg_len = int(msg_len)
                 self.msg_type = msg_type
+                if intinfo < 0:
+                    self.nextDeferred.errback(failure.DefaultException(
+                        "Error returned from server: %s %s" % (intinfo,
+                                                               errors.int_to_const[intinfo])))
 
         self.msg_len = self.msg_len - len(data)
 
