@@ -19,6 +19,7 @@
 #
 #############################################################################
 
+
 const_to_int = {}
 int_to_const = {}
 
@@ -28,16 +29,11 @@ class Constant(int):
         inst = super(Constant, cls).__new__(cls, value, **kwargs)
         inst._name = name
         global const_to_int, int_to_const
-        const_to_int[value] = inst
-        int_to_const[value] = inst
+        const_to_int[name] = inst
+        int_to_const[inst] = name
 
-        def new_tostr(self):
-            return self._name.__str__()
-
-        inst.__str__ = new_tostr
         return inst
 
-Constant("EMPTY", 0)
 
 # R_ZONE_MAIN:
 COL_ZONE_ID = Constant('COL_ZONE_ID', 101)
