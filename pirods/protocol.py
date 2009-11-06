@@ -39,11 +39,13 @@ import logging
 class GSIAuth(object):
     implements(IPushProducer)
 
-    def beginAuthentication(self, data, consumer):
+    def beginAuthentication(self, data, consumer, producer):
         self.paused = 0; self.stopped = 0
         self.consumer = consumer
+        self.producer = producer
         self.deferred = deferred = defer.Deferred()
         self.consumer.registerProducer(self, False)
+        self.producer.registerConsumer(self)
         self.data = {}
         self.buffer = ''
         self.resumeProducing(data, first=True)
@@ -51,6 +53,11 @@ class GSIAuth(object):
 
     def pauseProducing(self):
         self.paused = True
+
+    def write(self, data):
+        # TODO should use the buffer in the class
+        #self.buffer = self.buffer + data
+        self.resumeProducing(data)
 
     def resumeProducing(self, data='', first=False):
         # transport calls resumeProducing when this is attached
@@ -60,9 +67,8 @@ class GSIAuth(object):
         if first:
             if not data:
                 # Already Authed because there was no DN recieved from the server
-
-                print 'CALLING'
                 self.consumer.unregisterProducer()
+                self.producer.unregisterConsumer()
                 reactor.callLater(0.001, self.deferred.callback, True)
                 return
             server_dn = data.split('\0')[0]
@@ -123,19 +129,21 @@ class GSIAuth(object):
             # Reset all class variables
             self.consumer.msg_len = 0
             self.consumer.unregisterProducer()
+            self.producer.unregisterConsumer()
             reactor.callLater(0.001, self.deferred.callback, True)
         return
 
     def stopProducing(self):
         print 'stopProducing: invoked'
         self.consumer.unregisterProducer()
+        self.producer.unregisterConsumer()
 
 
 class IRODS(Protocol):
     def __init__(self):
         self.msg_len = 0
         self.api = 0
-        self.continueProcessing = None
+        self.consumer = None
         self.data = ''
 
 
@@ -276,22 +284,26 @@ class IRODS(Protocol):
         else:
             self.nextDeferred.callback(data)
 
+    def registerConsumer(self, consumer):
+        if self.consumer:
+            raise Exception("Can't register consumer, another consumer is registered")
+        self.consumer = consumer
+
+    def unregisterConsumer(self):
+        self.consumer = None
+
     def _rods_api_reply_711(self, data, first=False):
         """
         irods GSI auth reply
         """
         def unhook(data, prot):
-            prot.continueProcessing = None
             reactor.callLater(0.001, prot.sendNextCommand)
-            print "CALLED"
             return data
 
         a = GSIAuth()
-        d = a.beginAuthentication(data, self.transport)
+        d = a.beginAuthentication(data, self.transport, self)
         d.addCallback(unhook, self)
         d.addCallback(self.nextDeferred.callback)
-        self.continueProcessing = a.resumeProducing
-
         return
 
 
@@ -332,8 +344,8 @@ class IRODS(Protocol):
 
 
     def dataReceived(self, data):
-        if self.continueProcessing:
-            self.continueProcessing(data)
+        if self.consumer:
+            self.consumer.write(data)
             return
         #log.msg("\n--------RECIEVE\n" + repr(data), debug=True)
         if self.msg_len < 1:
