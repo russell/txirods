@@ -20,8 +20,11 @@
 #############################################################################
 
 from twisted.internet.protocol import Protocol
+from twisted.internet.interfaces import IPushProducer
+from twisted.internet import defer, reactor
 from twisted.protocols import basic
 from twisted.python import log, failure, filepath
+from zope.interface import implements
 import struct
 from sys import stdout
 import messages
@@ -32,6 +35,101 @@ from pyGlobus.security import ContextRequests, GSSCredException
 from pyGlobus import gssc
 from construct import Container
 import logging
+
+class GSIAuth(object):
+    implements(IPushProducer)
+
+    def beginAuthentication(self, data, consumer):
+        self.paused = 0; self.stopped = 0
+        self.consumer = consumer
+        self.deferred = deferred = defer.Deferred()
+        self.consumer.registerProducer(self, False)
+        self.data = {}
+        self.buffer = ''
+        self.resumeProducing(data, first=True)
+        return deferred
+
+    def pauseProducing(self):
+        self.paused = True
+
+    def resumeProducing(self, data='', first=False):
+        # transport calls resumeProducing when this is attached
+        if not first and not data:
+            return
+        self.paused = False
+        if first:
+            if not data:
+                # Already Authed because there was no DN recieved from the server
+
+                print 'CALLING'
+                self.consumer.unregisterProducer()
+                reactor.callLater(0.001, self.deferred.callback, True)
+                return
+            server_dn = data.split('\0')[0]
+            log.msg(server_dn)
+            self.data['server_dn'] = server_dn
+
+            # create credential
+            init_cred = GSSCred()
+            name, mechs, usage  = GSSName(free=False), GSSMechs(), GSSUsage()
+
+            try:
+                init_cred.acquire_cred(name, mechs, usage)
+            except GSSCredException:
+                self.nextDeferred.errback()
+                return
+
+            try:
+                lifetime, credName = init_cred.inquire_cred()
+            except GSSCredException:
+                self.nextDeferred.errback()
+                return
+
+            context = GSSContext()
+            requests = ContextRequests()
+
+            target_name = GSSName()
+            major, minor, targetName_handle = gssc.import_name('arcs-df.vpac.org', gssc.cvar.GSS_C_NT_HOSTBASED_SERVICE)
+            target_name._handle = targetName_handle
+
+            requests.set_mutual()
+            requests.set_replay()
+
+            self.data.update({'name':name, 'lifetime':lifetime, 'credName':credName,
+                              'targetName':target_name, 'todelete':name,
+                              'context':context, 'requests':requests, 'cred': init_cred})
+        else:
+            context = self.data['context']
+            init_cred=self.data['cred']
+            target_name=self.data['targetName']
+            requests=self.data['requests']
+            self.buffer = self.buffer + data
+            data = self.buffer
+
+        try:
+            major,minor,outToken = context.init_context(init_cred=init_cred,
+                                                        target_name=target_name,
+                                                        inputTokenString=data,
+                                                        requests=requests)
+        except GSSContextException:
+            # XXX this doesn't seem to be called, no idea
+            print GSSContextException
+        else:
+            self.buffer = ''
+
+        self.consumer.write(outToken)
+        # XXX WTF is with this number?
+        if major == gssc.GSS_S_COMPLETE:
+            # Reset all class variables
+            self.consumer.msg_len = 0
+            self.consumer.unregisterProducer()
+            reactor.callLater(0.001, self.deferred.callback, True)
+        return
+
+    def stopProducing(self):
+        print 'stopProducing: invoked'
+        self.consumer.unregisterProducer()
+
 
 class IRODS(Protocol):
     def __init__(self):
@@ -182,81 +280,18 @@ class IRODS(Protocol):
         """
         irods GSI auth reply
         """
-        if first:
-            if not data:
-                # Already Authed because there was no DN recieved from the server
+        def unhook(data, prot):
+            prot.continueProcessing = None
+            reactor.callLater(0.001, prot.sendNextCommand)
+            print "CALLED"
+            return data
 
-                # XXX Set num again to some other random value
-                self.reactor.callLater(0.001, self.sendNextCommand)
-                self.nextDeferred.callback(None)
-                return
-            server_dn = data.split('\0')[0]
-            log.msg(server_dn)
-            self.command.data['server_dn'] = server_dn
+        a = GSIAuth()
+        d = a.beginAuthentication(data, self.transport)
+        d.addCallback(unhook, self)
+        d.addCallback(self.nextDeferred.callback)
+        self.continueProcessing = a.resumeProducing
 
-            # create credential
-            init_cred = GSSCred()
-            name, mechs, usage  = GSSName(free=False), GSSMechs(), GSSUsage()
-
-            try:
-                init_cred.acquire_cred(name, mechs, usage)
-            except GSSCredException:
-                self.nextDeferred.errback()
-                return
-
-            try:
-                lifetime, credName = init_cred.inquire_cred()
-            except GSSCredException:
-                self.nextDeferred.errback()
-                return
-
-            context = GSSContext()
-            requests = ContextRequests()
-
-            target_name = GSSName()
-            major, minor, targetName_handle = gssc.import_name('arcs-df.vpac.org', gssc.cvar.GSS_C_NT_HOSTBASED_SERVICE)
-            target_name._handle = targetName_handle
-
-            #requests.set_delegation()
-            requests.set_mutual()
-            requests.set_replay()
-
-            # XXX not really sure if this is needed anymore
-            self.msg_len = 10000000000000
-
-            self.continueProcessing = self._rods_api_reply_711
-
-            self.command.data.update({'name':name, 'lifetime':lifetime, 'credName':credName,
-                                      'targetName':target_name, 'todelete':name,
-                                      'context':context, 'requests':requests, 'cred': init_cred})
-        else:
-            context = self.command.data['context']
-            init_cred=self.command.data['cred']
-            target_name=self.command.data['targetName']
-            requests=self.command.data['requests']
-            self.data = self.data + data
-            data = self.data
-
-        try:
-            major,minor,outToken = context.init_context(init_cred=init_cred,
-                                                        target_name=target_name,
-                                                        inputTokenString=data,
-                                                        requests=requests)
-        except GSSContextException:
-            # XXX this doesn't seem to be called, no idea
-            print GSSContextException
-        else:
-            self.data = ''
-
-        self.transport.write(outToken)
-        # XXX WTF is with this number?
-        if major == gssc.GSS_S_COMPLETE:
-            # Reset all class variables
-            self.data = ''
-            self.msg_len = 0
-            self.continueProcessing = None
-            self.reactor.callLater(0.001, self.sendNextCommand)
-            self.nextDeferred.callback(True)
         return
 
 
