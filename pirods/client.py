@@ -71,6 +71,7 @@ class IRODSClient(IRODS):
 
     def sendNextInQueue(self, result):
         self.reactor.callLater(0, self.sendNextCommand)
+        return result
 
     def sendNextCommand(self):
         #print "sendNextCommand " + str(self.actionQueue)
