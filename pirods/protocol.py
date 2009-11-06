@@ -37,6 +37,15 @@ from pyGlobus import gssc
 from construct import Container
 import logging
 
+class IRODSGeneralException(Exception):
+    def __init__(self, errorNumber, errorName):
+        self.errorName = errorName
+        self.errorNumber = errorNumber
+
+    def __str__(self):
+        return "General iRODS API exception %s: %s" % (self.errorName, self.errorNumber)
+
+
 class GSIAuth(object):
     implements(IPushProducer)
 
@@ -363,9 +372,13 @@ class IRODS(Protocol):
                 self.msg_len = int(msg_len)
                 self.msg_type = msg_type
                 if intinfo < 0:
-                    self.nextDeferred.errback(failure.DefaultException(
-                        "Error returned from server: %s %s" % (intinfo,
-                                                               errors.int_to_const[intinfo])))
+                    error_name = 'UNKNOWN'
+                    if errors.int_to_const.has_key(intinfo):
+                        error_name = errors.int_to_const[intinfo]
+                    try:
+                        raise IRODSGeneralException(intinfo, error_name)
+                    except:
+                        self.nextDeferred.errback(failure.Failure())
 
         self.msg_len = self.msg_len - len(data)
 
