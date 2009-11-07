@@ -28,15 +28,25 @@ import sys
 from protocol import IRODS
 
 
-class IRODSCommand(object):
+class Command(object):
     def __init__(self, command, *args, **kw):
         self.command = command
         self.args = args
         self.kw = kw
         self.deferred = defer.Deferred()
 
-    def execute(self):
+    def execute(self, irods):
         return self.command(*self.args, **self.kw)
+
+class IRODSCommand(Command):
+    def __init__(self, command, *args, **kw):
+        self.command = command
+        self.args = args
+        self.kw = kw
+        self.deferred = defer.Deferred()
+
+    def execute(self, irods):
+        return self.command(irods, *self.args, **self.kw)
 
 
 class IRODSAPICommand(IRODSCommand):
@@ -57,17 +67,25 @@ class IRODSAPICommand(IRODSCommand):
 
 
 class IRODSClient(IRODS):
-    def __init__(self, reactor):
+    def __init__(self, reactor, queue):
         IRODS.__init__(self)
         self.reactor = reactor
         self.actionQueue = []
         self._failed = 0
         self.command = None
+        self.initialQueue = queue
         self.nextDeferred = None
 
     def connectionMade(self):
+        # XXX should be replaced with an immediate call perhaps?
+        d = self.queueIRODSCommand(IRODS.sendConnect)
+        d.addCallbacks(success, print_st)
+
+        if self.initialQueue:
+            self.initialQueue.callback(self)
+            del self.initialQueue
+
         IRODS.connectionMade(self)
-        self.sendNextCommand()
 
     def sendNextInQueue(self, result):
         self.reactor.callLater(0, self.sendNextCommand)
@@ -86,7 +104,7 @@ class IRODSClient(IRODS):
             command.execute(self)
         else:
             self.nextDeferred.addCallback(self.sendNextInQueue)
-            command.execute()
+            command.execute(self)
 
     def queueAPICommand(self, int_info):
         cmd = IRODSAPICommand(int_info)
@@ -96,8 +114,17 @@ class IRODSClient(IRODS):
             self.sendNextCommand()
         return cmd.deferred
 
-    def queueCommand(self, command, *args, **kwargs):
+    def queueIRODSCommand(self, command, *args, **kwargs):
         cmd = IRODSCommand(command, *args, **kwargs)
+
+        self.actionQueue.append(cmd)
+        if (len(self.actionQueue) == 1 and self.transport is not None and self.nextDeferred is None):
+            self.sendNextCommand()
+        return cmd.deferred
+
+
+    def queueCommand(self, command, *args, **kwargs):
+        cmd = Command(command, *args, **kwargs)
 
         self.actionQueue.append(cmd)
         if (len(self.actionQueue) == 1 and self.transport is not None and self.nextDeferred is None):
@@ -113,10 +140,7 @@ class IRODSClientFactory(ClientFactory):
         self.deferred = deferred
 
     def buildProtocol(self, addr):
-        p = self.protocol(self.reactor)
-        if self.deferred:
-            self.reactor.callLater(1, self.deferred.callback, p)
-            del self.deferred
+        p = self.protocol(self.reactor, self.deferred)
         p.factory = self
         return p
 
@@ -153,33 +177,33 @@ def success(response):
 def print_st(error):
     log.err(error.printTraceback())
     # Should close connection cleanly
-    reactor.stop()
+    try:
+        reactor.stop()
+    except:
+        pass
 
 
 def connectionMade(irodsClient):
-    d = irodsClient.queueCommand(irodsClient.sendConnect)
+    d = irodsClient.queueAPICommand(711)
+    d.addCallbacks(success, print_st)
+    d = irodsClient.queueAPICommand(711)
     d.addCallbacks(success, print_st)
 
-    c = irodsClient.queueAPICommand(711)
-    d.addCallbacks(success, print_st)
-    c = irodsClient.queueAPICommand(711)
+    d = irodsClient.queueIRODSCommand(IRODS.obj_stat, '/ARCS/home')
     d.addCallbacks(success, print_st)
 
-    d = irodsClient.queueCommand(irodsClient.obj_stat, '/ARCS/home/russell.sim')
-    d.addCallbacks(success, print_st)
-
-    d = irodsClient.queueCommand(irodsClient.list_objects, '/ARCS/home/russell.sim')
+    d = irodsClient.queueIRODSCommand(IRODS.list_objects, '/ARCS/home/russell.sim')
     d.addCallbacks(parse_sqlResult, print_st)
     d.addCallbacks(success, print_st)
 
-    d = irodsClient.queueCommand(irodsClient.list_collections, '/ARCS/home')
+    d = irodsClient.queueIRODSCommand(IRODS.list_collections, '/ARCS/home')
     d.addCallbacks(parse_sqlResult, print_st)
     d.addCallbacks(success, print_st)
 
-    d = irodsClient.queueCommand(irodsClient.put ,'/home/russell/perl.pm' ,'/ARCS/home/russell.sim/perl.pm')
-    d.addCallbacks(success, print_st)
+    #d = irodsClient.queueIRODSCommand(IRODS.put ,'/home/russell/perl.pm' ,'/ARCS/home/russell.sim/perl.pm')
+    #d.addCallbacks(success, print_st)
 
-    d = irodsClient.queueCommand(irodsClient.sendDisconnect)
+    d = irodsClient.queueIRODSCommand(IRODS.sendDisconnect)
     d.addCallbacks(success, print_st)
 
     d = irodsClient.queueCommand(reactor.stop)
