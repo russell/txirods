@@ -26,7 +26,6 @@ from twisted.protocols import basic
 from twisted.python import log, failure, filepath
 from zope.interface import implements
 import struct
-from sys import stdout
 import messages
 import errors
 from xml.dom import minidom
