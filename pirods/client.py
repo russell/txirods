@@ -67,9 +67,8 @@ class IRODSAPICommand(IRODSCommand):
 
 
 class IRODSClient(IRODS):
-    def __init__(self, reactor, queue):
+    def __init__(self, queue):
         IRODS.__init__(self)
-        self.reactor = reactor
         self.actionQueue = []
         self._failed = 0
         self.command = None
@@ -88,7 +87,7 @@ class IRODSClient(IRODS):
         IRODS.connectionMade(self)
 
     def sendNextInQueue(self, result):
-        self.reactor.callLater(0, self.sendNextCommand)
+        reactor.callLater(0, self.sendNextCommand)
         return result
 
     def sendNextCommand(self):
@@ -135,12 +134,11 @@ class IRODSClient(IRODS):
 class IRODSClientFactory(ClientFactory):
     protocol = IRODSClient
 
-    def __init__(self, reactor, deferred=None):
-        self.reactor = reactor
+    def __init__(self, deferred=None):
         self.deferred = deferred
 
     def buildProtocol(self, addr):
-        p = self.protocol(self.reactor, self.deferred)
+        p = self.protocol(self.deferred)
         p.factory = self
         return p
 
@@ -213,7 +211,7 @@ def connectionMade(irodsClient):
 def main():
     d = defer.Deferred()
     d.addCallback(connectionMade)
-    i = IRODSClientFactory(reactor, d)
+    i = IRODSClientFactory(d)
     log.startLogging(sys.stdout)
     reactor.connectTCP('arcs-df.vpac.org', 1247, i)
     reactor.run()
