@@ -151,7 +151,6 @@ class IRODSClientFactory(ClientFactory):
     def clientConnectionLost(self, connector, reason):
         log.msg('Lost connection')
         reason.printTraceback()
-        reactor.stop()
 
     def clientConnectionFailed(self, connector, reason):
         log.err('Connection failed')
@@ -201,7 +200,14 @@ def main():
     cmd.deferred.addCallbacks(success, print_st)
     cmds.append(cmd)
 
+    # XXX had to remove connector? no idea why
+    def clientConnectionLost(self, reason):
+        log.msg('Lost connection')
+        reason.printTraceback()
+        reactor.stop()
+
     i = IRODSClientFactory(cmds)
+    i.clientConnectionLost = clientConnectionLost
     log.startLogging(sys.stdout)
     reactor.connectTCP('arcs-df.vpac.org', 1247, i)
     reactor.run()
