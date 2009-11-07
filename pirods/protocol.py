@@ -390,9 +390,11 @@ class IRODS(Protocol):
                 getattr(self, '_' + self.msg_type.lower())(data)
                 return
             #print 'Calling: _' + self.msg_type.lower() + '_%s' % self.int_info
-            if hasattr(self, '_' + self.msg_type.lower() + '_%s' % self.int_info):
+            elif hasattr(self, '_' + self.msg_type.lower() + '_%s' % self.int_info):
                 getattr(self, '_' + self.msg_type.lower() + '_%s' % self.int_info)(data)
                 return
+            else:
+                self.nextDeferred.callback(data)
 
 
 
