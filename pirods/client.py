@@ -140,10 +140,8 @@ class IRODSClientFactory(ClientFactory):
         p.factory = self
         if isinstance(self.command, list):
             for c in self.command:
-                print "queueing"
                 p.queueCommand(c)
         else:
-            print "queue"
             p.queueCommand(self.command)
         return p
 
