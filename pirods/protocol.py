@@ -92,13 +92,13 @@ class GSIAuth(object):
             try:
                 init_cred.acquire_cred(name, mechs, usage)
             except GSSCredException:
-                self.nextDeferred.errback()
+                self.deferred.errback()
                 return
 
             try:
                 lifetime, credName = init_cred.inquire_cred()
             except GSSCredException:
-                self.nextDeferred.errback()
+                self.deferred.errback()
                 return
 
             context = GSSContext()
