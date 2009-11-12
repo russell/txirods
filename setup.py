@@ -3,7 +3,7 @@ import sys, os
 
 version = '0.1'
 
-setup(name='pirods',
+setup(name='txIRODS',
       version=version,
       description="a native interface to iRODS",
       long_description="""\
@@ -19,10 +19,12 @@ setup(name='pirods',
       zip_safe=False,
       install_requires=[
           # -*- Extra requirements: -*-
+          'setuptools',
+          'twisted',
       ],
       entry_points="""
       # -*- Entry points: -*-
       [console_scripts]
-      pirods = pirods.client:main
+      txirods = txirods.client:main
       """,
       )
