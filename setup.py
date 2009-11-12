@@ -21,6 +21,7 @@ setup(name='txIRODS',
           # -*- Extra requirements: -*-
           'setuptools',
           'twisted',
+          'construct',
       ],
       entry_points="""
       # -*- Entry points: -*-
