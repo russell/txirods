@@ -41,5 +41,83 @@ class MessageTestCase(unittest.TestCase):
         self.assertTrue(genquery_generated == genquery_marshalled)
 
 
+    def testDataObjInpMarshall(self):
+        dataobjinp_marshalled = '/ARCS/home/russell.sim\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00%@#ANULLSTR$%\x00\x00\x00\x00\x00%@#ANULLSTR$%\x00%@#ANULLSTR$%\x00'
+        dataobjinp_parsed = messages.dataObjInp.parse(dataobjinp_marshalled)
+        dataobjinp_unmarshalled = Container(keyValPair = Container(len = 0,
+                                                keyWords = None,
+                                                values = None),
+                         createMode = 0,
+                         dataSize = 0,
+                         numThreads = 0,
+                         objPath = '/ARCS/home/russell.sim',
+                         offset = 0,
+                         openFlags = 0,
+                         oprType = 0,
+                         specColl = None)
+
+        self.assertTrue(dataobjinp_parsed == dataobjinp_unmarshalled)
+
+        dataobjinp_generated = messages.dataObjInp.build(dataobjinp_unmarshalled)
+
+        self.assertTrue(dataobjinp_generated == dataobjinp_marshalled)
+
+
+    def testGenQueryOutMarshall(self):
+        genqueryout_marshalled = '\x00\x00\x00\x04\x00\x00\x00\x07\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\xf5\x00\x00\x00:/ARCS/home/ARCS-COLLAB/Projects/Design Research Institute\x00/ARCS/home/ARCS-COLLAB/Projects/Plone - DF integration\x00/ARCS/home/ARCS-COLLAB/Projects/TWiki AAF Integration\x00/ARCS/home/ARCS-COLLAB/Projects/UQ AWMC SCORe PWP Project\x00\x00\x00\x01\xf7\x00\x00\x00:anders.boman\x00anders.boman\x00anders.boman\x00anders.boman\x00\x00\x00\x01\xfc\x00\x00\x00:01256013640\x0001256013656\x0001256013683\x0001256013696\x00\x00\x00\x01\xfd\x00\x00\x00:01256013640\x0001256013656\x0001256013683\x0001256013696\x00\x00\x00\x01\xfe\x00\x00\x00:\x00\x00\x00\x00\x00\x00\x01\xff\x00\x00\x00:\x00\x00\x00\x00\x00\x00\x02\x00\x00\x00\x00:\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00%@#ANULLSTR$%\x00\x00\x00\x00\x00\x00\x00\x00\x00%@#ANULLSTR$%\x00\x00\x00\x00\x00\x00\x00\x00\x00%@#ANULLSTR$%\x00\x00\x00\x00\x00\x00\x00\x00\x00%@#ANULLSTR$%\x00\x00\x00\x00\x00\x00\x00\x00\x00%@#ANULLSTR$%\x00\x00\x00\x00\x00\x00\x00\x00\x00%@#ANULLSTR$%\x00\x00\x00\x00\x00\x00\x00\x00\x00%@#ANULLSTR$%\x00\x00\x00\x00\x00\x00\x00\x00\x00%@#ANULLSTR$%\x00\x00\x00\x00\x00\x00\x00\x00\x00%@#ANULLSTR$%\x00\x00\x00\x00\x00\x00\x00\x00\x00%@#ANULLSTR$%\x00\x00\x00\x00\x00\x00\x00\x00\x00%@#ANULLSTR$%\x00\x00\x00\x00\x00\x00\x00\x00\x00%@#ANULLSTR$%\x00\x00\x00\x00\x00\x00\x00\x00\x00%@#ANULLSTR$%\x00\x00\x00\x00\x00\x00\x00\x00\x00%@#ANULLSTR$%\x00\x00\x00\x00\x00\x00\x00\x00\x00%@#ANULLSTR$%\x00\x00\x00\x00\x00\x00\x00\x00\x00%@#ANULLSTR$%\x00\x00\x00\x00\x00\x00\x00\x00\x00%@#ANULLSTR$%\x00\x00\x00\x00\x00\x00\x00\x00\x00%@#ANULLSTR$%\x00\x00\x00\x00\x00\x00\x00\x00\x00%@#ANULLSTR$%\x00\x00\x00\x00\x00\x00\x00\x00\x00%@#ANULLSTR$%\x00\x00\x00\x00\x00\x00\x00\x00\x00%@#ANULLSTR$%\x00\x00\x00\x00\x00\x00\x00\x00\x00%@#ANULLSTR$%\x00\x00\x00\x00\x00\x00\x00\x00\x00%@#ANULLSTR$%\x00\x00\x00\x00\x00\x00\x00\x00\x00%@#ANULLSTR$%\x00\x00\x00\x00\x00\x00\x00\x00\x00%@#ANULLSTR$%\x00\x00\x00\x00\x00\x00\x00\x00\x00%@#ANULLSTR$%\x00\x00\x00\x00\x00\x00\x00\x00\x00%@#ANULLSTR$%\x00\x00\x00\x00\x00\x00\x00\x00\x00%@#ANULLSTR$%\x00\x00\x00\x00\x00\x00\x00\x00\x00%@#ANULLSTR$%\x00\x00\x00\x00\x00\x00\x00\x00\x00%@#ANULLSTR$%\x00\x00\x00\x00\x00\x00\x00\x00\x00%@#ANULLSTR$%\x00\x00\x00\x00\x00\x00\x00\x00\x00%@#ANULLSTR$%\x00\x00\x00\x00\x00\x00\x00\x00\x00%@#ANULLSTR$%\x00\x00\x00\x00\x00\x00\x00\x00\x00%@#ANULLSTR$%\x00\x00\x00\x00\x00\x00\x00\x00\x00%@#ANULLSTR$%\x00\x00\x00\x00\x00\x00\x00\x00\x00%@#ANULLSTR$%\x00\x00\x00\x00\x00\x00\x00\x00\x00%@#ANULLSTR$%\x00\x00\x00\x00\x00\x00\x00\x00\x00%@#ANULLSTR$%\x00\x00\x00\x00\x00\x00\x00\x00\x00%@#ANULLSTR$%\x00\x00\x00\x00\x00\x00\x00\x00\x00%@#ANULLSTR$%\x00\x00\x00\x00\x00\x00\x00\x00\x00%@#ANULLSTR$%\x00\x00\x00\x00\x00\x00\x00\x00\x00%@#ANULLSTR$%\x00\x00\x00\x00\x00\x00\x00\x00\x00%@#ANULLSTR$%\x00'
+        genqueryout_parsed = messages.genQueryOut.parse(genqueryout_marshalled)
+        genqueryout_unmarshalled = Container(attriCnt = 7,
+                                             continueInx = 0,
+                                             rowCnt = 4,
+                                             sqlResult = [Container(const = 'COL_COLL_NAME',
+                                                                    len = 58,
+                                                                    value = ['/ARCS/home/ARCS-COLLAB/Projects/Design Research Institute',
+                                                                             '/ARCS/home/ARCS-COLLAB/Projects/Plone - DF integration',
+                                                                             '/ARCS/home/ARCS-COLLAB/Projects/TWiki AAF Integration',
+                                                                             '/ARCS/home/ARCS-COLLAB/Projects/UQ AWMC SCORe PWP Project']),
+                                                          Container(const = 'COL_COLL_OWNER_NAME',
+                                                                    len = 58,
+                                                                    value = ['anders.boman',
+                                                                             'anders.boman',
+                                                                             'anders.boman',
+                                                                             'anders.boman']),
+                                                          Container(const = 'COL_COLL_CREATE_TIME',
+                                                                    len = 58,
+                                                                    value = ['01256013640',
+                                                                             '01256013656',
+                                                                             '01256013683',
+                                                                             '01256013696']),
+                                                          Container(const = 'COL_COLL_MODIFY_TIME',
+                                                                    len = 58,
+                                                                    value = ['01256013640',
+                                                                             '01256013656',
+                                                                             '01256013683',
+                                                                             '01256013696']),
+                                                          Container(const = 'COL_COLL_TYPE',
+                                                                    len = 58,
+                                                                    value = ['',
+                                                                             '',
+                                                                             '',
+                                                                             '']),
+                                                          Container(const = 'COL_COLL_INFO1',
+                                                                    len = 58,
+                                                                    value = ['',
+                                                                             '',
+                                                                             '',
+                                                                             '']),
+                                                          Container(const = 'COL_COLL_INFO2',
+                                                                    len = 58,
+                                                                    value = ['',
+                                                                             '',
+                                                                             '',
+                                                                             ''])],
+                                             totalRowCount = 0)
+
+        self.assertTrue(genqueryout_parsed == genqueryout_unmarshalled)
+
+        genqueryout_generated = messages.genQueryOut.build(genqueryout_unmarshalled)
+
+        # TODO Currently broken because it doesn't pad with ANULLSTR
+        #self.assertTrue(genqueryout_generated == genqueryout_marshalled)
 
 
