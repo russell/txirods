@@ -356,7 +356,7 @@ class IRODS(Protocol):
 
     def processHeader(self, data):
         if self.processed_header:
-            return False
+            return data
         self.header_buf = self.header_buf + data
         buf = self.header_buf
 
@@ -381,8 +381,9 @@ class IRODS(Protocol):
                     raise IRODSGeneralException(intinfo, error_name)
                 except:
                     self.nextDeferred.errback(failure.Failure())
-        else:
-            return True
+            data = data[self.header_len + 4:]
+            return data
+        return None
 
 
     def processData(self, data):
@@ -415,7 +416,8 @@ class IRODS(Protocol):
             return
         #log.msg("\n--------RECIEVE\n" + repr(data), debug=True)
 
-        if self.processHeader(data):
+        data = self.processHeader(data)
+        if not data:
             return
 
         if self.processData(data):
