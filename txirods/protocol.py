@@ -154,6 +154,8 @@ class IRODS(Protocol):
         self.api = 0
         self.consumer = None
         self.data = ''
+        self.processed_header = False
+        self.header_buf = ''
 
 
     def sendMessage(self, msg_type='', err_len=0, bs_len=0, int_info=0,
@@ -352,38 +354,43 @@ class IRODS(Protocol):
         log.msg('Response Received', logging.INFO)
 
 
-    def dataReceived(self, data):
-        if self.consumer:
-            self.consumer.write(data)
-            return
-        #log.msg("\n--------RECIEVE\n" + repr(data), debug=True)
-        if self.msg_len < 1:
-            if data[4:].startswith('<MsgHeader_PI>'):
-                eom = struct.unpack('!L', data[:4])[0] + 4
-                header = data[4:eom]
-                data = data[eom:]
-                msg = minidom.parseString(header)
-                msg_type = msg.getElementsByTagName('type')[0].childNodes[0].data
-                msg_len = msg.getElementsByTagName('msgLen')[0].childNodes[0].data
-                err_len = msg.getElementsByTagName('errorLen')[0].childNodes[0].data
-                bs_len = msg.getElementsByTagName('bsLen')[0].childNodes[0].data
-                intinfo = int(msg.getElementsByTagName('intInfo')[0].childNodes[0].data)
-                self.msg_len = int(msg_len)
-                self.msg_type = msg_type
-                if intinfo < 0:
-                    error_name = 'UNKNOWN'
-                    if errors.int_to_const.has_key(intinfo):
-                        error_name = errors.int_to_const[intinfo]
-                    try:
-                        raise IRODSGeneralException(intinfo, error_name)
-                    except:
-                        self.nextDeferred.errback(failure.Failure())
+    def processHeader(self, data):
+        if self.processed_header:
+            return False
+        self.header_buf = self.header_buf + data
+        buf = self.header_buf
 
+        if self.msg_len == 0:
+            self.header_len = struct.unpack('!L', buf[:4])[0]
+
+        if buf[4:].startswith('<MsgHeader_PI>'):
+            header = buf[4:self.header_len + 4]
+            msg = minidom.parseString(header)
+            msg_type = msg.getElementsByTagName('type')[0].childNodes[0].data
+            msg_len = msg.getElementsByTagName('msgLen')[0].childNodes[0].data
+            err_len = msg.getElementsByTagName('errorLen')[0].childNodes[0].data
+            bs_len = msg.getElementsByTagName('bsLen')[0].childNodes[0].data
+            intinfo = int(msg.getElementsByTagName('intInfo')[0].childNodes[0].data)
+            self.msg_len = int(msg_len)
+            self.msg_type = msg_type
+            if intinfo < 0:
+                error_name = 'UNKNOWN'
+                if errors.int_to_const.has_key(intinfo):
+                    error_name = errors.int_to_const[intinfo]
+                try:
+                    raise IRODSGeneralException(intinfo, error_name)
+                except:
+                    self.nextDeferred.errback(failure.Failure())
+        else:
+            return True
+
+
+    def processData(self, data):
         self.msg_len = self.msg_len - len(data)
 
         if self.int_info == 711:
             self._rods_api_reply_711(data, True)
-            return
+            return True
         if data:
             #print 'Calling: _' + self.msg_type.lower()
             if hasattr(self, '_' + self.msg_type.lower()):
@@ -397,7 +404,22 @@ class IRODS(Protocol):
                 self.nextDeferred.callback(data)
 
 
+    def doneProcessing(self):
+        self.processed_header = False
+        self.header_buf = ''
 
 
+    def dataReceived(self, data):
+        if self.consumer:
+            self.consumer.write(data)
+            return
+        #log.msg("\n--------RECIEVE\n" + repr(data), debug=True)
 
+        if self.processHeader(data):
+            return
+
+        if self.processData(data):
+            return
+
+        self.doneProcessing()
 
