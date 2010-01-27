@@ -28,13 +28,16 @@ from zope.interface import implements
 import struct
 import messages
 import errors
-from xml.dom import minidom
+from md5 import md5
+from xml.sax import make_parser
 from pyGlobus.security import GSSCred, GSSContext, GSSContextException
 from pyGlobus.security import GSSName, GSSMechs, GSSUsage
 from pyGlobus.security import ContextRequests, GSSCredException
 from pyGlobus import gssc
 from construct import Container
 import logging
+
+from txirods.header import IRODSHeaderHandler
 
 class IRODSGeneralException(Exception):
     def __init__(self, errorNumber, errorName):
@@ -148,14 +151,22 @@ class GSIAuth(object):
         self.producer.unregisterConsumer()
 
 
-class IRODS(Protocol):
+class Request(object):
     def __init__(self):
+        self.msg_type = ''
         self.msg_len = 0
-        self.api = 0
+        self.err_len = 0
+        self.bs_len = 0
+        self.intinfo = 0
+
+
+class IRODSChannel(Protocol):
+    def __init__(self):
         self.consumer = None
-        self.data = ''
-        self.processed_header = False
-        self.header_buf = ''
+        self.parser = None
+        self.header_len = 0
+        self.__processed_header = False
+        self.__buffer = ''
 
 
     def sendMessage(self, msg_type='', err_len=0, bs_len=0, int_info=0,
@@ -170,9 +181,88 @@ class IRODS(Protocol):
                                              'err_len':err_len,
                                              'bs_len':bs_len,
                                              'int_info':int_info})
-        #log.msg("\n--------SEND\n" + header + repr(data), debug=True)
+        log.msg("\n--------SEND\n" + header + repr(data), debug=True)
         num = struct.pack('!L', len(header))
         self.transport.write(num + header + data)
+
+
+    def dataReceived(self, data):
+        if self.consumer:
+            self.consumer.write(data)
+            return
+        log.msg("\n--------RECIEVE\n" + repr(data), debug=True)
+
+        if not self.__processed_header:
+            data = self.headerReceived(data)
+        if not data:
+            return
+        log.msg("\n--------Data\n" + repr(data), debug=True)
+
+        if self.processData(data):
+            return
+
+
+    def headerReceived(self, data):
+        if self.__processed_header:
+            return data
+
+        if not self.header_len:
+            self.__buffer = self.__buffer + data
+            if len(self.__buffer) < 4:
+                return
+            data = self.__buffer
+            self.header_len = struct.unpack('!L', data[:4])[0]
+            data = data[4:]
+            self.request = Request()
+            self.parser = make_parser()
+            self.parser.setContentHandler(IRODSHeaderHandler(self.request))
+
+        self.parser.feed(data[:self.header_len])
+
+        # if we just processed the last part of the header, cleanup and finish
+        if self.header_len <= len(data):
+            # XXX Backwards compatability from before i had a request object
+            self.msg_len = self.request.msg_len
+            self.msg_type = self.request.msg_type
+
+            self.parser.close()
+            self.parser = None
+            self.__processed_header = True
+
+        rawdata = data[self.header_len:]
+
+        self.header_len = self.header_len - len(data[:self.header_len])
+
+        if self.request.intinfo < 0:
+            error_name = 'UNKNOWN'
+            if errors.int_to_const.has_key(self.request.intinfo):
+                error_name = errors.int_to_const[self.request.intinfo]
+            try:
+                raise IRODSGeneralException(self.request.intinfo, error_name)
+            except:
+                self.nextDeferred.errback(failure.Failure())
+
+        return rawdata
+
+
+    def processData(self,data):
+        return True
+
+
+    def doneProcessing(self):
+        self.__processed_header = False
+        self.header_buf = ''
+        log.msg("\nDONE PROCESSING\n")
+
+
+
+class IRODS(IRODSChannel):
+    def __init__(self):
+        IRODSChannel.__init__(self)
+        self.msg_len = 0
+        self.api = 0
+        self.consumer = None
+        self.data = ''
 
     def list_objects(self, path=''):
         """
@@ -354,38 +444,6 @@ class IRODS(Protocol):
         log.msg('Response Received', logging.INFO)
 
 
-    def processHeader(self, data):
-        if self.processed_header:
-            return data
-        self.header_buf = self.header_buf + data
-        buf = self.header_buf
-
-        if self.msg_len == 0:
-            self.header_len = struct.unpack('!L', buf[:4])[0]
-
-        if buf[4:].startswith('<MsgHeader_PI>'):
-            header = buf[4:self.header_len + 4]
-            msg = minidom.parseString(header)
-            msg_type = msg.getElementsByTagName('type')[0].childNodes[0].data
-            msg_len = msg.getElementsByTagName('msgLen')[0].childNodes[0].data
-            err_len = msg.getElementsByTagName('errorLen')[0].childNodes[0].data
-            bs_len = msg.getElementsByTagName('bsLen')[0].childNodes[0].data
-            intinfo = int(msg.getElementsByTagName('intInfo')[0].childNodes[0].data)
-            self.msg_len = int(msg_len)
-            self.msg_type = msg_type
-            if intinfo < 0:
-                error_name = 'UNKNOWN'
-                if errors.int_to_const.has_key(intinfo):
-                    error_name = errors.int_to_const[intinfo]
-                try:
-                    raise IRODSGeneralException(intinfo, error_name)
-                except:
-                    self.nextDeferred.errback(failure.Failure())
-            data = data[self.header_len + 4:]
-            return data
-        return None
-
-
     def processData(self, data):
         self.msg_len = self.msg_len - len(data)
 
@@ -393,35 +451,12 @@ class IRODS(Protocol):
             self._rods_api_reply_711(data, True)
             return True
         if data:
-            #print 'Calling: _' + self.msg_type.lower()
             if hasattr(self, '_' + self.msg_type.lower()):
-                getattr(self, '_' + self.msg_type.lower())(data)
-                return
-            #print 'Calling: _' + self.msg_type.lower() + '_%s' % self.int_info
+                log.msg('Calling: _' + self.msg_type.lower())
+                return getattr(self, '_' + self.msg_type.lower())(data)
             elif hasattr(self, '_' + self.msg_type.lower() + '_%s' % self.int_info):
-                getattr(self, '_' + self.msg_type.lower() + '_%s' % self.int_info)(data)
-                return
+                log.msg('Calling: _' + self.msg_type.lower() + '_%s' % self.int_info)
+                return getattr(self, '_' + self.msg_type.lower() + '_%s' % self.int_info)(data)
             else:
                 self.nextDeferred.callback(data)
-
-
-    def doneProcessing(self):
-        self.processed_header = False
-        self.header_buf = ''
-
-
-    def dataReceived(self, data):
-        if self.consumer:
-            self.consumer.write(data)
-            return
-        #log.msg("\n--------RECIEVE\n" + repr(data), debug=True)
-
-        data = self.processHeader(data)
-        if not data:
-            return
-
-        if self.processData(data):
-            return
-
-        self.doneProcessing()
 
