@@ -200,7 +200,7 @@ class IRODSChannel(Protocol):
 
         if not self._processed_header:
             data = self.headerReceived(data)
-        if not data:
+        if not self._processed_header:
             return
         log.msg("\n--------Data\n" + repr(data), debug=True)
 
@@ -222,6 +222,7 @@ class IRODSChannel(Protocol):
             if len(self._buffer) < 4:
                 return
             data = self._buffer
+            self._buffer = ''
             self.header_len = struct.unpack('!L', data[:4])[0]
             data = data[4:]
             self.request = Request()
@@ -259,21 +260,58 @@ class IRODSChannel(Protocol):
 
     def processData(self, data):
         if self.message_len:
+            if len(data) < self.message_len:
+                self._buffer = self._buffer + data
+                if len(self._buffer) < self.message_len:
+                    return
+                data = self._buffer
+                self._buffer = ''
             self.message_len = self.message_len - len(data)
-            return
+            return self.processMessage(data)
 
         if self.error_len:
+            if len(data) < self.error_len:
+                self._buffer = self._buffer + data
+                if len(self._buffer) < self.error_len:
+                    return
+                data = self._buffer
+                self._buffer = ''
             self.error_len = self.error_len - len(data)
-            return
+            return self.processError(data)
 
         if self.bytestream_len:
+            # probably doesn't need buffer
+            if len(data) < self.bytestream_len:
+                self._buffer = self._buffer + data
+                if len(self._buffer) < self.bytestream_len:
+                    return
+                data = self._buffer
+                self._buffer = ''
             self.bytestream_len = self.bytestream_len - len(data)
-            return
+            return self.processByteStream(data)
+
+        return self.processOther(data)
+
+
+    def processMessage(self, data):
+        pass
+
+
+    def processError(self, data):
+        pass
+
+
+    def processByteStream(self, data):
+        pass
+
+
+    def processOther(self, data):
+        pass
 
 
     def doneProcessing(self):
         self._processed_header = False
-        self.header_buf = ''
+        self._buffer = ''
         log.msg("\nDONE PROCESSING\n")
 
 
@@ -466,12 +504,8 @@ class IRODS(IRODSChannel):
         log.msg('Response Received', logging.INFO)
 
 
-    def processData(self, data):
-        self.msg_len = self.msg_len - len(data)
-
-        if self.int_info == 711:
-            self._rods_api_reply_711(data, True)
-            return True
+    def processMessage(self, data):
+        log.msg('Calling: _' + self.msg_type.lower())
         if data:
             if hasattr(self, '_' + self.msg_type.lower()):
                 log.msg('Calling: _' + self.msg_type.lower())
@@ -481,4 +515,12 @@ class IRODS(IRODSChannel):
                 return getattr(self, '_' + self.msg_type.lower() + '_%s' % self.int_info)(data)
             else:
                 self.nextDeferred.callback(data)
+
+    def processOther(self, data):
+        if self.int_info == 711:
+            self._rods_api_reply_711(data, True)
+            return True
+        if self.int_info == 704:
+            self._rods_api_reply_704(data)
+            return
 

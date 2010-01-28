@@ -76,12 +76,13 @@ class IRODSProtocolTestCase(unittest.TestCase):
         a = protocol.IRODSChannel()
         a.makeConnection(b)
         a.dataReceived(self.request)
-        a.connectionLost(IOError("all one"))
+        a.connectionLost(IOError("all done"))
         self.assertEqual(a.header_len, 0)
         self.assertEqual(a.request.msg_len, 338)
         self.assertEqual(a.request.err_len, 0)
         self.assertEqual(a.request.bs_len, 0)
         self.assertEqual(a.request.msg_type, "RODS_CONNECT")
+        self.assertEqual(a.message_len, 0)
         self.assertEqual(a._processed_header, False)
 
     def test_iter_header_parse(self):
@@ -90,11 +91,80 @@ class IRODSProtocolTestCase(unittest.TestCase):
         a.makeConnection(b)
         for byte in self.request:
             a.dataReceived(byte)
-        a.connectionLost(IOError("all one"))
+        a.connectionLost(IOError("all done"))
         self.assertEqual(a.header_len, 0)
         self.assertEqual(a.request.msg_len, 338)
         self.assertEqual(a.request.err_len, 0)
         self.assertEqual(a.request.bs_len, 0)
         self.assertEqual(a.request.msg_type, "RODS_CONNECT")
+        self.assertEqual(a.message_len, 0)
         self.assertEqual(a._processed_header, False)
+
+
+    several_requests = """\0\0\0\x8b<MsgHeader_PI>
+<type>RODS_CONNECT</type>
+<msgLen>338</msgLen>
+<errorLen>0</errorLen>
+<bsLen>0</bsLen>
+<intInfo>0</intInfo>
+</MsgHeader_PI>
+<StartupPack_PI>
+<irodsProt>0</irodsProt>
+<reconnFlag>0</reconnFlag>
+<connectCnt>0</connectCnt>
+<proxyUser>russell.sim</proxyUser>
+<proxyRcatZone>ARCS</proxyRcatZone>
+<clientUser>russell.sim</clientUser>
+<clientRcatZone>ARCS</clientRcatZone>
+<relVersion>rods2.1</relVersion>
+<apiVersion>d</apiVersion>
+<option></option>
+</StartupPack_PI>
+\0\0\0\x8b<MsgHeader_PI>
+<type>RODS_VERSION</type>
+<msgLen>178</msgLen>
+<errorLen>0</errorLen>
+<bsLen>0</bsLen>
+<intInfo>0</intInfo>
+</MsgHeader_PI>
+<Version_PI>
+<status>0</status>
+<relVersion>rods2.1</relVersion>
+<apiVersion>d</apiVersion>
+<reconnPort>0</reconnPort>
+<reconnAddr></reconnAddr>
+<cookie>0</cookie>
+</Version_PI>
+"""
+
+    def test_several_simple_header_parse(self):
+        return
+        b = StringTransport()
+        a = protocol.IRODSChannel()
+        a.makeConnection(b)
+        a.dataReceived(self.several_requests)
+        a.connectionLost(IOError("all done"))
+        self.assertEqual(a.header_len, 0)
+        self.assertEqual(a.request.msg_len, 178)
+        self.assertEqual(a.request.err_len, 0)
+        self.assertEqual(a.request.bs_len, 0)
+        self.assertEqual(a.request.msg_type, "RODS_VERSION")
+        self.assertEqual(a.message_len, 0)
+        self.assertEqual(a._processed_header, False)
+
+    def test_several_iter_header_parse(self):
+        b = StringTransport()
+        a = protocol.IRODSChannel()
+        a.makeConnection(b)
+        for byte in self.several_requests:
+            a.dataReceived(byte)
+        a.connectionLost(IOError("all done"))
+        self.assertEqual(a.header_len, 0)
+        self.assertEqual(a.request.msg_len, 178)
+        self.assertEqual(a.request.err_len, 0)
+        self.assertEqual(a.request.bs_len, 0)
+        self.assertEqual(a.request.msg_type, "RODS_VERSION")
+        self.assertEqual(a.message_len, 0)
+        self.assertEqual(a._processed_header, False)
+
 
