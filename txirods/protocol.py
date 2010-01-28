@@ -515,16 +515,10 @@ class IRODS(IRODSChannel):
                 self.nextDeferred.callback(data)
             return
 
-        log.msg('Calling: _' + self.msg_type.lower())
-        if data:
-            if hasattr(self, '_' + self.msg_type.lower()):
-                log.msg('Calling: _' + self.msg_type.lower())
-                return getattr(self, '_' + self.msg_type.lower())(data)
-            elif hasattr(self, '_' + self.msg_type.lower() + '_%s' % self.int_info):
-                log.msg('Calling: _' + self.msg_type.lower() + '_%s' % self.int_info)
-                return getattr(self, '_' + self.msg_type.lower() + '_%s' % self.int_info)(data)
-            else:
-                self.nextDeferred.callback(data)
+        if self.int_info == 703:
+            self._rods_api_reply_703(data)
+            return
+
 
     def processOther(self, data):
         if self.int_info == 711:
