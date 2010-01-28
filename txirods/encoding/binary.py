@@ -22,7 +22,7 @@ from string import Template
 from construct import Enum, Struct, CString, UBInt32, UBInt64, MetaArray, IfThenElse
 from construct import MappingAdapter, Pass, Select, Const, Field, Array
 
-from genquery import const_to_int, int_to_const
+from txirods.genquery import const_to_int, int_to_const
 
 NULL_PTR_PACK_STR = "%@#ANULLSTR$%\0"
 

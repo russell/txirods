@@ -25,9 +25,34 @@ from twisted.internet import reactor, defer
 from construct import Container
 from txirods import messages
 
+from txirods.encoding.rodsml import SimpleXMLHandler
+
+class XMLMessageTestCase(unittest.TestCase):
+
+    def test_version_parse(self):
+        data = """<Version_PI>
+<status>0</status>
+<relVersion>rods2.1</relVersion>
+<apiVersion>d</apiVersion>
+<reconnPort>0</reconnPort>
+<reconnAddr></reconnAddr>
+<cookie>0</cookie>
+</Version_PI>
+"""
+        from xml.sax import make_parser
+        parser = make_parser()
+        v = SimpleXMLHandler()
+        parser.setContentHandler(v)
+        parser.feed(data)
+        self.assertEqual(v.data, {u'apiVersion': u'd',
+                                  u'cookie': 0,
+                                  u'reconnAddr': '',
+                                  u'reconnPort': 0,
+                                  u'relVersion': u'rods2.1',
+                                  u'status': 0})
 
 
-class MessageTestCase(unittest.TestCase):
+class BinaryMessageTestCase(unittest.TestCase):
 
     def testGenQueryMarshall(self):
         genquery_marshalled = "\x00\x00\x01\xf4\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00 \x00\x00\x00\x00%@#ANULLSTR$%\x00%@#ANULLSTR$%\x00\x00\x00\x00\x07\x00\x00\x01\xf5\x00\x00\x01\x93\x00\x00\x01\x91\x00\x00\x01\xa5\x00\x00\x01\x97\x00\x00\x01\xa4\x00\x00\x01\xa3\x00\x00\x00\x01\x00\x00\x00\x01\x00\x00\x00\x01\x00\x00\x00\x01\x00\x00\x00\x01\x00\x00\x00\x01\x00\x00\x00\x01\x00\x00\x00\x01\x00\x00\x01\xf5 = '/ARCS/home/russell.sim'\x00"
@@ -119,5 +144,6 @@ class MessageTestCase(unittest.TestCase):
 
         # TODO Currently broken because it doesn't pad with ANULLSTR
         #self.assertTrue(genqueryout_generated == genqueryout_marshalled)
+
 
 

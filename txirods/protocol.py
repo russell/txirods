@@ -26,8 +26,8 @@ from twisted.protocols import basic
 from twisted.python import log, failure, filepath
 from zope.interface import implements
 import struct
-import messages
-import errors
+from txirods.encoding import binary as messages
+from txirods import errors
 from md5 import md5
 from xml.sax import make_parser
 from pyGlobus.security import GSSCred, GSSContext, GSSContextException
@@ -314,7 +314,7 @@ class IRODSChannel(Protocol):
         self._buffer = ''
         log.msg("\nDONE PROCESSING\n")
 
-
+from txirods.encoding import rods2_1_binary, rods2_1_generic
 
 class IRODS(IRODSChannel):
     def __init__(self):
@@ -323,6 +323,11 @@ class IRODS(IRODSChannel):
         self.api = 0
         self.consumer = None
         self.data = ''
+        self.api_reponse_map = rods2_1_binary
+        self.generic_reponse_map = rods2_1_generic
+
+    def finishConnect(self, data):
+        log.msg("\nFinish connection, by setting up api and version info\n", debug=True)
 
     def list_objects(self, path=''):
         """
@@ -421,29 +426,8 @@ class IRODS(IRODSChannel):
                                                'proxy_zone': proxy_zone, 'client_user': client_user,
                                                'client_zone': client_zone, 'option': option})
         self.sendMessage('RODS_CONNECT',data=startup)
+        self.nextDeferred.addCallback(self.finishConnect)
 
-
-    def _rods_api_reply_633(self, data):
-        """
-        irods object stat reply
-        """
-        try:
-            data = messages.rodsObjStat.parse(data)
-        except:
-            self.nextDeferred.errback(failure.Failure())
-        else:
-            self.nextDeferred.callback(str(data))
-
-    def _rods_api_reply_702(self, data, first=False):
-        """
-        irods gen query reply
-        """
-        try:
-            data = messages.genQueryOut.parse(data)
-        except:
-            self.nextDeferred.errback(failure.Failure())
-        else:
-            self.nextDeferred.callback(data)
 
     def registerConsumer(self, consumer):
         if self.consumer:
@@ -468,6 +452,27 @@ class IRODS(IRODSChannel):
         return
 
 
+    def _rods_api_reply_703(self, data):
+        log.msg("\nChallenge\n" + repr(data), debug=True)
+        MAX_PASSWORD_LEN = 50
+        resp_len = len(data) + MAX_PASSWORD_LEN
+        nullstring = '\0' * MAX_PASSWORD_LEN
+        resp = data + 'rods' + '\0' * 46
+        log.msg("\n" + str(len(resp)) + ' ' + str(resp_len))
+        resp = md5(resp).digest()
+
+        # replace and 0 with 1
+        resp = resp.replace('\0', '\x01')
+        userandzone = 'rods' + '#' + 'tempZone'
+        # pad message with 0
+        self.sendApiReq(int_info=704, data=resp + userandzone + '\0')
+
+
+    def _rods_api_reply_704(self, data):
+        log.msg("\nSuccessfully authed\n", debug=True)
+        self.nextDeferred.callback("Authed")
+
+
     def _rods_api_reply_700(self, data):
         """
         irods server info reply
@@ -484,27 +489,32 @@ class IRODS(IRODSChannel):
         self.nextDeferred.callback(server_info)
 
 
-    def _rods_version(self, data):
-        """
-        irods version reply
-
-        <Version_PI>
-        <status>0</status>
-        <relVersion>rods2.1</relVersion>
-        <apiVersion>d</apiVersion>
-        <reconnPort>0</reconnPort>
-        <reconnAddr></reconnAddr>
-        <cookie>0</cookie>
-        </Version_PI>
-        """
-        self.nextDeferred.callback(data)
-
-
     def responseReceived(self):
         log.msg('Response Received', logging.INFO)
 
 
     def processMessage(self, data):
+        """
+        irods message processing
+        """
+        if self.int_info in self.api_reponse_map:
+            try:
+                data = self.api_reponse_map[self.int_info].parse(data)
+            except:
+                self.nextDeferred.errback(failure.Failure())
+            else:
+                self.nextDeferred.callback(data)
+            return
+
+        if self.msg_type in self.generic_reponse_map:
+            try:
+                data = self.generic_reponse_map[self.msg_type](data)
+            except:
+                self.nextDeferred.errback(failure.Failure())
+            else:
+                self.nextDeferred.callback(data)
+            return
+
         log.msg('Calling: _' + self.msg_type.lower())
         if data:
             if hasattr(self, '_' + self.msg_type.lower()):
