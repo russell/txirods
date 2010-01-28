@@ -159,14 +159,20 @@ class Request(object):
         self.bs_len = 0
         self.intinfo = 0
 
+    def getMessageLengths(self):
+        return (self.msg_len, self.err_len, self.bs_len)
+
 
 class IRODSChannel(Protocol):
     def __init__(self):
         self.consumer = None
         self.parser = None
         self.header_len = 0
-        self.__processed_header = False
-        self.__buffer = ''
+        self.message_len = 0
+        self.error_len = 0
+        self.bytestream_len = 0
+        self._processed_header = False
+        self._buffer = ''
 
 
     def sendMessage(self, msg_type='', err_len=0, bs_len=0, int_info=0,
@@ -192,7 +198,7 @@ class IRODSChannel(Protocol):
             return
         log.msg("\n--------RECIEVE\n" + repr(data), debug=True)
 
-        if not self.__processed_header:
+        if not self._processed_header:
             data = self.headerReceived(data)
         if not data:
             return
@@ -201,16 +207,21 @@ class IRODSChannel(Protocol):
         if self.processData(data):
             return
 
+        if self.message_len or self.error_len or self.bytestream_len:
+            return
+
+        self.doneProcessing()
+
 
     def headerReceived(self, data):
-        if self.__processed_header:
+        if self._processed_header:
             return data
 
         if not self.header_len:
-            self.__buffer = self.__buffer + data
-            if len(self.__buffer) < 4:
+            self._buffer = self._buffer + data
+            if len(self._buffer) < 4:
                 return
-            data = self.__buffer
+            data = self._buffer
             self.header_len = struct.unpack('!L', data[:4])[0]
             data = data[4:]
             self.request = Request()
@@ -227,7 +238,8 @@ class IRODSChannel(Protocol):
 
             self.parser.close()
             self.parser = None
-            self.__processed_header = True
+            self._processed_header = True
+            self.message_len, self.error_len, self.bytestream_len = self.request.getMessageLengths()
 
         rawdata = data[self.header_len:]
 
@@ -245,12 +257,22 @@ class IRODSChannel(Protocol):
         return rawdata
 
 
-    def processData(self,data):
-        return True
+    def processData(self, data):
+        if self.message_len:
+            self.message_len = self.message_len - len(data)
+            return
+
+        if self.error_len:
+            self.error_len = self.error_len - len(data)
+            return
+
+        if self.bytestream_len:
+            self.bytestream_len = self.bytestream_len - len(data)
+            return
 
 
     def doneProcessing(self):
-        self.__processed_header = False
+        self._processed_header = False
         self.header_buf = ''
         log.msg("\nDONE PROCESSING\n")
 

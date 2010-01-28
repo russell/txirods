@@ -67,7 +67,8 @@ class IRODSProtocolTestCase(unittest.TestCase):
 <relVersion>rods2.1</relVersion>
 <apiVersion>d</apiVersion>
 <option></option>
-</StartupPack_PI>"""
+</StartupPack_PI>
+"""
 
     def test_simple_header_parse(self):
         return
@@ -81,6 +82,7 @@ class IRODSProtocolTestCase(unittest.TestCase):
         self.assertEqual(a.request.err_len, 0)
         self.assertEqual(a.request.bs_len, 0)
         self.assertEqual(a.request.msg_type, "RODS_CONNECT")
+        self.assertEqual(a._processed_header, False)
 
     def test_iter_header_parse(self):
         b = StringTransport()
@@ -94,4 +96,5 @@ class IRODSProtocolTestCase(unittest.TestCase):
         self.assertEqual(a.request.err_len, 0)
         self.assertEqual(a.request.bs_len, 0)
         self.assertEqual(a.request.msg_type, "RODS_CONNECT")
+        self.assertEqual(a._processed_header, False)
 
