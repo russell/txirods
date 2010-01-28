@@ -314,6 +314,7 @@ class IRODSChannel(Protocol):
         self._buffer = ''
         log.msg("\nDONE PROCESSING\n")
 
+
 from txirods.encoding import rods2_1_binary, rods2_1_generic
 
 class IRODS(IRODSChannel):
@@ -437,7 +438,7 @@ class IRODS(IRODSChannel):
     def unregisterConsumer(self):
         self.consumer = None
 
-    def _rods_api_reply_711(self, data, first=False):
+    def auth_gsi(self, data, first=False):
         """
         irods GSI auth reply
         """
@@ -452,7 +453,7 @@ class IRODS(IRODSChannel):
         return
 
 
-    def _rods_api_reply_703(self, data):
+    def auth_challenge(self, data):
         log.msg("\nChallenge\n" + repr(data), debug=True)
         MAX_PASSWORD_LEN = 50
         resp_len = len(data) + MAX_PASSWORD_LEN
@@ -468,7 +469,7 @@ class IRODS(IRODSChannel):
         self.sendApiReq(int_info=704, data=resp + userandzone + '\0')
 
 
-    def _rods_api_reply_704(self, data):
+    def auth_challange_response(self, data):
         log.msg("\nSuccessfully authed\n", debug=True)
         self.nextDeferred.callback("Authed")
 
@@ -516,15 +517,15 @@ class IRODS(IRODSChannel):
             return
 
         if self.int_info == 703:
-            self._rods_api_reply_703(data)
+            self.auth_challenge(data)
             return
 
 
     def processOther(self, data):
         if self.int_info == 711:
-            self._rods_api_reply_711(data, True)
+            self.auth_gsi(data, True)
             return True
         if self.int_info == 704:
-            self._rods_api_reply_704(data)
+            self.auth_challange_response(data)
             return
 
