@@ -19,8 +19,9 @@
 #
 #############################################################################
 from string import Template
-from construct import Enum, Struct, CString, UBInt32, UBInt64, MetaArray, IfThenElse
-from construct import MappingAdapter, Pass, Select, Const, Field, Array
+from construct import Enum, Struct, CString, SBInt32, UBInt32, UBInt64
+from construct import MetaArray, IfThenElse
+from construct import MappingAdapter, Pass, Select, Const, Field
 
 from txirods.genquery import const_to_int, int_to_const
 
@@ -184,6 +185,14 @@ genQueryOut = Struct('genQueryOut',
                      UBInt32('continueInx'),
                      UBInt32('totalRowCount'),
                      MetaArray(lambda c: c.attriCnt, (sqlResult)),
+                    )
+
+miscSvrInfo = Struct('miscSvrInfo',
+                     SBInt32('serverType'), #RCAT_ENABLED or RCAT_NOT_ENABLED
+                     UBInt32('serverBootTime'),
+                     CString('relVersion'),
+                     CString('apiVersion'),
+                     CString('rodsZone'),
                     )
 
 

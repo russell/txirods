@@ -474,22 +474,6 @@ class IRODS(IRODSChannel):
         self.nextDeferred.callback("Authed")
 
 
-    def _rods_api_reply_700(self, data):
-        """
-        irods server info reply
-        """
-        server_info = {}
-        d = struct.unpack('!iI', data[:8])
-        server_info['serverType'] = d[0]
-        server_info['serverBootTime'] = d[1]
-        d = data[8:].split('\0')
-        server_info['relVersion'] = d[0]
-        server_info['apiVersion'] = d[1]
-        server_info['rodsZone'] = d[2]
-        log.msg(str(server_info))
-        self.nextDeferred.callback(server_info)
-
-
     def responseReceived(self):
         log.msg('Response Received', logging.INFO)
 
