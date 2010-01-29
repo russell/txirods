@@ -400,6 +400,7 @@ class IRODS(IRODSChannel):
                             value = [" = '%s'" % path]),
                          maxRows = 500, options = 32, partialStartIndex = 0)
         d = self.sendApiReq(int_info=702, data=messages.genQueryInp.build(data))
+        d.addErrback(self.sendNextRequest)
         d.addCallback(self.sendNextRequest)
         return d
 
@@ -420,6 +421,7 @@ class IRODS(IRODSChannel):
                          oprType = 0,
                          specColl = None)
         d = self.sendApiReq(int_info=633, data=messages.dataObjInp.build(data))
+        d.addErrback(self.sendNextRequest)
         d.addCallback(self.sendNextRequest)
         return d
 

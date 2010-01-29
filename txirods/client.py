@@ -45,6 +45,7 @@ class IRODSClient(IRODS):
 
 
 def parse_sqlResult(data):
+    if not data: return {}
     new_data = []
     for col in data.sqlResult:
         for r in range(data.rowCnt):
@@ -91,9 +92,13 @@ def main():
         d.addCallbacks(success, print_st)
 
         d = irodsClient.list_objects('/tempZone/home/rods')
+        d.addErrback(print_st)
+        d.addCallbacks(parse_sqlResult)
         d.addCallbacks(success, print_st)
 
-        d = irodsClient.list_collections('/tempZone/home/rods')
+        d = irodsClient.list_collections('/tempZone/home')
+        d.addErrback(print_st)
+        d.addCallbacks(parse_sqlResult)
         d.addCallbacks(success, print_st)
 
         d = irodsClient.sendDisconnect()
