@@ -2,8 +2,8 @@
 from xml.sax.handler import ContentHandler
 
 class IRODSHeaderHandler(ContentHandler):
-    def __init__(self, request):
-        self.request = request
+    def __init__(self, headers):
+        self.headers = headers
         self.__tag = ''
         self.__buffer = ''
 
@@ -28,9 +28,9 @@ class IRODSHeaderHandler(ContentHandler):
     def endElement(self, name):
         if self.__tag:
             if self.__tag in ['msg_len', 'err_len', 'bs_len', 'intinfo']:
-                setattr(self.request, self.__tag, int(self.__buffer))
+                setattr(self.headers, self.__tag, int(self.__buffer))
             else:
-                setattr(self.request, self.__tag, self.__buffer)
+                setattr(self.headers, self.__tag, self.__buffer)
             self.__tag = ''
             self.__buffer = ''
 

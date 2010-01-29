@@ -21,7 +21,7 @@ class IRODSHeaderParserTestCase(unittest.TestCase):
     def test_simple_header_parse(self):
         from xml.sax import make_parser
         parser = make_parser()
-        r = protocol.Request()
+        r = protocol.Response()
         handler = header.IRODSHeaderHandler(r)
         parser.setContentHandler(handler)
         parser.feed(self.request)
@@ -35,7 +35,7 @@ class IRODSHeaderParserTestCase(unittest.TestCase):
     def test_iter_header_parse(self):
         from xml.sax import make_parser
         parser = make_parser()
-        r = protocol.Request()
+        r = protocol.Response()
         handler = header.IRODSHeaderHandler(r)
         parser.setContentHandler(handler)
         for byte in self.request:
@@ -78,10 +78,10 @@ class IRODSProtocolTestCase(unittest.TestCase):
         a.dataReceived(self.request)
         a.connectionLost(IOError("all done"))
         self.assertEqual(a.header_len, 0)
-        self.assertEqual(a.request.msg_len, 338)
-        self.assertEqual(a.request.err_len, 0)
-        self.assertEqual(a.request.bs_len, 0)
-        self.assertEqual(a.request.msg_type, "RODS_CONNECT")
+        self.assertEqual(a.response.msg_len, 338)
+        self.assertEqual(a.response.err_len, 0)
+        self.assertEqual(a.response.bs_len, 0)
+        self.assertEqual(a.response.msg_type, "RODS_CONNECT")
         self.assertEqual(a.message_len, 0)
         self.assertEqual(a._processed_header, False)
 
@@ -93,10 +93,10 @@ class IRODSProtocolTestCase(unittest.TestCase):
             a.dataReceived(byte)
         a.connectionLost(IOError("all done"))
         self.assertEqual(a.header_len, 0)
-        self.assertEqual(a.request.msg_len, 338)
-        self.assertEqual(a.request.err_len, 0)
-        self.assertEqual(a.request.bs_len, 0)
-        self.assertEqual(a.request.msg_type, "RODS_CONNECT")
+        self.assertEqual(a.response.msg_len, 338)
+        self.assertEqual(a.response.err_len, 0)
+        self.assertEqual(a.response.bs_len, 0)
+        self.assertEqual(a.response.msg_type, "RODS_CONNECT")
         self.assertEqual(a.message_len, 0)
         self.assertEqual(a._processed_header, False)
 
@@ -145,10 +145,10 @@ class IRODSProtocolTestCase(unittest.TestCase):
         a.dataReceived(self.several_requests)
         a.connectionLost(IOError("all done"))
         self.assertEqual(a.header_len, 0)
-        self.assertEqual(a.request.msg_len, 178)
-        self.assertEqual(a.request.err_len, 0)
-        self.assertEqual(a.request.bs_len, 0)
-        self.assertEqual(a.request.msg_type, "RODS_VERSION")
+        self.assertEqual(a.response.msg_len, 178)
+        self.assertEqual(a.response.err_len, 0)
+        self.assertEqual(a.response.bs_len, 0)
+        self.assertEqual(a.response.msg_type, "RODS_VERSION")
         self.assertEqual(a.message_len, 0)
         self.assertEqual(a._processed_header, False)
 
@@ -160,10 +160,10 @@ class IRODSProtocolTestCase(unittest.TestCase):
             a.dataReceived(byte)
         a.connectionLost(IOError("all done"))
         self.assertEqual(a.header_len, 0)
-        self.assertEqual(a.request.msg_len, 178)
-        self.assertEqual(a.request.err_len, 0)
-        self.assertEqual(a.request.bs_len, 0)
-        self.assertEqual(a.request.msg_type, "RODS_VERSION")
+        self.assertEqual(a.response.msg_len, 178)
+        self.assertEqual(a.response.err_len, 0)
+        self.assertEqual(a.response.bs_len, 0)
+        self.assertEqual(a.response.msg_type, "RODS_VERSION")
         self.assertEqual(a.message_len, 0)
         self.assertEqual(a._processed_header, False)
 

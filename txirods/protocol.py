@@ -151,7 +151,16 @@ class GSIAuth(object):
         self.producer.unregisterConsumer()
 
 
+
 class Request(object):
+    def __init__(self):
+        self.deferred = defer.Deferred()
+        self.int_info = 0
+        self.msg_type =''
+        self.data = ''
+
+
+class Response(object):
     def __init__(self):
         self.msg_type = ''
         self.msg_len = 0
@@ -225,33 +234,33 @@ class IRODSChannel(Protocol):
             self._buffer = ''
             self.header_len = struct.unpack('!L', data[:4])[0]
             data = data[4:]
-            self.request = Request()
+            self.response = Response()
             self.parser = make_parser()
-            self.parser.setContentHandler(IRODSHeaderHandler(self.request))
+            self.parser.setContentHandler(IRODSHeaderHandler(self.response))
 
         self.parser.feed(data[:self.header_len])
 
         # if we just processed the last part of the header, cleanup and finish
         if self.header_len <= len(data):
-            # XXX Backwards compatability from before i had a request object
-            self.msg_len = self.request.msg_len
-            self.msg_type = self.request.msg_type
+            # XXX Backwards compatability from before i had a response object
+            self.msg_len = self.response.msg_len
+            self.msg_type = self.response.msg_type
 
             self.parser.close()
             self.parser = None
             self._processed_header = True
-            self.message_len, self.error_len, self.bytestream_len = self.request.getMessageLengths()
+            self.message_len, self.error_len, self.bytestream_len = self.response.getMessageLengths()
 
         rawdata = data[self.header_len:]
 
         self.header_len = self.header_len - len(data[:self.header_len])
 
-        if self.request.intinfo < 0:
+        if self.response.intinfo < 0:
             error_name = 'UNKNOWN'
-            if errors.int_to_const.has_key(self.request.intinfo):
-                error_name = errors.int_to_const[self.request.intinfo]
+            if errors.int_to_const.has_key(self.response.intinfo):
+                error_name = errors.int_to_const[self.response.intinfo]
             try:
-                raise IRODSGeneralException(self.request.intinfo, error_name)
+                raise IRODSGeneralException(self.response.intinfo, error_name)
             except:
                 self.nextDeferred.errback(failure.Failure())
 
@@ -326,9 +335,29 @@ class IRODS(IRODSChannel):
         self.data = ''
         self.api_reponse_map = rods2_1_binary
         self.generic_reponse_map = rods2_1_generic
+        self.request_queue = defer.DeferredQueue()
+        self.nextDeferred = None
+
+
+    def sendRequest(self, request):
+        log.msg('===========SEND=REQUEST============')
+        self.nextDeferred = request.deferred
+        self.int_info = request.int_info
+        self.sendMessage(request.msg_type, int_info=request.int_info, data=request.data)
+
+
+    def sendNextRequest(self, data):
+        self.request_queue.get().addCallback(self.sendRequest)
+        return data
+
+
+    def connectionMade(self):
+        self.sendNextRequest(None)
+
 
     def finishConnect(self, data):
         log.msg("\nFinish connection, by setting up api and version info\n", debug=True)
+
 
     def list_objects(self, path=''):
         """
@@ -347,7 +376,7 @@ class IRODS(IRODSChannel):
                             inx = [501],
                             value = [" = '%s'" % path]),
                          maxRows = 500, options = 32, partialStartIndex = 0)
-        self.sendApiReq(int_info=702, data=messages.genQueryInp.build(data))
+        return self.sendApiReq(int_info=702, data=messages.genQueryInp.build(data))
 
 
     def list_collections(self, path=''):
@@ -367,7 +396,7 @@ class IRODS(IRODSChannel):
                             inx = [502],
                             value = [" = '%s'" % path]),
                          maxRows = 500, options = 32, partialStartIndex = 0)
-        self.sendApiReq(int_info=702, data=messages.genQueryInp.build(data))
+        return self.sendApiReq(int_info=702, data=messages.genQueryInp.build(data))
 
 
     def obj_stat(self, path=''):
@@ -385,7 +414,8 @@ class IRODS(IRODSChannel):
                          openFlags = 0,
                          oprType = 0,
                          specColl = None)
-        self.sendApiReq(int_info=633, data=messages.dataObjInp.build(data))
+        return self.sendApiReq(int_info=633, data=messages.dataObjInp.build(data))
+
 
     def put(self, file=None, remotefile=None):
         """
@@ -413,11 +443,26 @@ class IRODS(IRODSChannel):
 
 
     def sendApiReq(self, int_info=0, err_len=0, bs_len=0, data=''):
-        self.sendMessage('RODS_API_REQ', err_len, bs_len, int_info, data)
+        d = defer.Deferred()
+        d.addCallback(self.sendNextRequest)
+        r = Request()
+        r.deferred = d
+        r.msg_type = 'RODS_API_REQ'
+        r.int_info = int_info
+        r.data = data
+        self.request_queue.put(r)
+        return d
+        #self.sendMessage('RODS_API_REQ', err_len, bs_len, int_info, data)
 
 
     def sendDisconnect(self, err_len=0, bs_len=0, int_info=0, data=''):
-        self.sendMessage('RODS_DISCONNECT', err_len, bs_len, int_info, data)
+        d = defer.Deferred()
+        d.addCallback(self.sendNextRequest)
+        r = Request()
+        r.deferred = d
+        r.msg_type = 'RODS_DISCONNECT'
+        self.request_queue.put(r)
+        return d
 
 
     def sendConnect(self, reconnFlag=0, connectCnt=0, proxy_user='', proxy_zone='', client_user='', client_zone='', option=''):
@@ -427,8 +472,16 @@ class IRODS(IRODSChannel):
                              'proxy_zone': proxy_zone, 'client_user': client_user,
                              'client_zone': client_zone, 'option': option}
         startup = messages.connect.substitute(self.connect_info)
-        self.sendMessage('RODS_CONNECT',data=startup)
-        self.nextDeferred.addCallback(self.finishConnect)
+        #self.sendMessage('RODS_CONNECT',data=startup)
+        d = defer.Deferred()
+        d.addCallback(self.finishConnect)
+        d.addCallback(self.sendNextRequest)
+        r = Request()
+        r.deferred = d
+        r.msg_type = 'RODS_CONNECT'
+        r.data = startup
+        self.request_queue.put(r)
+        return d
 
 
     def registerConsumer(self, consumer):
@@ -436,15 +489,17 @@ class IRODS(IRODSChannel):
             raise Exception("Can't register consumer, another consumer is registered")
         self.consumer = consumer
 
+
     def unregisterConsumer(self):
         self.consumer = None
+
 
     def auth_gsi(self, data, first=False):
         """
         irods GSI auth reply
         """
         def unhook(data, prot):
-            reactor.callLater(0.001, prot.sendNextCommand)
+            reactor.callLater(0.001, prot.sendNextRequest)
             return data
 
         a = GSIAuth()
@@ -454,13 +509,19 @@ class IRODS(IRODSChannel):
         return
 
 
+    def send_auth_challenge(self, password):
+        self.password = password
+        return self.sendApiReq(703)
+
+
     def auth_challenge(self, data):
         log.msg("\nChallenge\n" + repr(data), debug=True)
         MAX_PASSWORD_LEN = 50
-        resp_len = len(data) + MAX_PASSWORD_LEN
-        nullstring = '\0' * MAX_PASSWORD_LEN
-        resp = data + 'rods' + '\0' * 46
-        log.msg("\n" + str(len(resp)) + ' ' + str(resp_len))
+        CHALLENGE_LEN = 64
+        resp_len = CHALLENGE_LEN + MAX_PASSWORD_LEN
+        resp = data + self.password
+        # response is padded with binary nulls
+        resp = resp + '\0' * (resp_len - len(resp))
         resp = md5(resp).digest()
 
         # replace and 0 with 1
@@ -469,7 +530,7 @@ class IRODS(IRODSChannel):
         userandzone = self.connect_info['proxy_user'] + '#' \
                 + self.connect_info['proxy_zone']
         # pad message with 0
-        self.sendApiReq(int_info=704, data=resp + userandzone + '\0')
+        self.sendMessage(msg_type='RODS_API_REQ', int_info=704, data=resp + userandzone + '\0')
 
 
     def auth_challange_response(self, data):
@@ -477,14 +538,11 @@ class IRODS(IRODSChannel):
         self.nextDeferred.callback("Authed")
 
 
-    def responseReceived(self):
-        log.msg('Response Received', logging.INFO)
-
-
     def processMessage(self, data):
         """
         irods message processing
         """
+        log.msg("\nPROCESSMESSAGE\n", debug=True)
         if self.int_info in self.api_reponse_map:
             try:
                 data = self.api_reponse_map[self.int_info].parse(data)
@@ -509,6 +567,7 @@ class IRODS(IRODSChannel):
 
 
     def processOther(self, data):
+        log.msg("\nPROCESSOTHER\n", debug=True)
         if self.int_info == 711:
             self.auth_gsi(data, True)
             return True

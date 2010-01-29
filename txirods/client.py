@@ -27,7 +27,6 @@ import sys
 
 from protocol import IRODS
 
-
 class Command(object):
     def __init__(self, command, *args, **kw):
         self.command = command
@@ -67,95 +66,9 @@ class IRODSAPICommand(IRODSCommand):
 
 
 class IRODSClient(IRODS):
-    def __init__(self):
-        IRODS.__init__(self)
-        self.actionQueue = []
-        self._failed = 0
-        self.command = None
-        self.nextDeferred = None
+    def connectionLost(self, *a):
+        self.nextDeferred.callback('Connection closed by remote host.')
 
-        cmd = IRODSCommand(IRODS.sendConnect)
-        self.actionQueue.append(cmd)
-        cmd.deferred.addCallbacks(success, print_st)
-
-        cmd = IRODSAPICommand(711)
-        self.actionQueue.append(cmd)
-        cmd.deferred.addCallbacks(success, print_st)
-
-        cmd = IRODSAPICommand(711)
-        self.actionQueue.append(cmd)
-        cmd.deferred.addCallbacks(success, print_st)
-
-    def connectionMade(self):
-        self.sendNextCommand()
-
-        IRODS.connectionMade(self)
-
-    def sendNextInQueue(self, result):
-        reactor.callLater(0, self.sendNextCommand)
-        return result
-
-    def sendNextCommand(self):
-        #print "sendNextCommand " + str(self.actionQueue)
-        if self.actionQueue:
-            command = self.actionQueue.pop(0)
-        else:
-            self.nextDeferred = None
-            return
-        self.command = command
-        self.nextDeferred = command.deferred
-        if isinstance(command, IRODSAPICommand):
-            command.execute(self)
-        else:
-            self.nextDeferred.addCallback(self.sendNextInQueue)
-            command.execute(self)
-
-    def queueAPICommand(self, int_info):
-        cmd = IRODSAPICommand(int_info)
-
-        self.queueCommand(cmd)
-        return cmd.deferred
-
-    def queueIRODSCommand(self, command, *args, **kwargs):
-        cmd = IRODSCommand(command, *args, **kwargs)
-
-        self.queueCommand(cmd)
-        return cmd.deferred
-
-
-    def queueCommand(self, cmd):
-        self.actionQueue.append(cmd)
-        if (len(self.actionQueue) == 1 and self.transport is not None and self.nextDeferred is None):
-            self.sendNextCommand()
-
-
-class IRODSClientFactory(ClientFactory):
-    protocol = IRODSClient
-
-    def __init__(self, command):
-        self.command = command
-
-    def buildProtocol(self, addr):
-        p = self.protocol()
-        p.factory = self
-        if isinstance(self.command, list):
-            for c in self.command:
-                p.queueCommand(c)
-        else:
-            p.queueCommand(self.command)
-        return p
-
-    def startedConnecting(self, connector):
-        pass
-
-    def clientConnectionLost(self, connector, reason):
-        log.msg('Lost connection')
-        reason.printTraceback()
-
-    def clientConnectionFailed(self, connector, reason):
-        log.err('Connection failed')
-        reason.printTraceback()
-        reactor.stop()
 
 
 def parse_sqlResult(data):
@@ -176,40 +89,43 @@ def success(response):
 
 def print_st(error):
     log.err(error.printTraceback())
-    # Should close connection cleanly
-    try:
-        reactor.stop()
-    except:
-        pass
+    # Gulp!
+    return
 
+from twisted.internet.protocol import ClientCreator
 
 def main():
-    cmds = []
-    cmd = IRODSCommand(IRODS.obj_stat, '/ARCS/home')
-    cmd.deferred.addCallbacks(success, print_st)
-    cmds.append(cmd)
-    cmd = IRODSCommand(IRODS.list_objects, '/ARCS/home/russell.sim')
-    cmd.deferred.addCallbacks(parse_sqlResult, print_st)
-    cmd.deferred.addCallbacks(success, print_st)
-    cmds.append(cmd)
-    cmd = IRODSCommand(IRODS.list_collections, '/ARCS/home')
-    cmd.deferred.addCallbacks(parse_sqlResult, print_st)
-    cmd.deferred.addCallbacks(success, print_st)
-    cmds.append(cmd)
-    cmd = IRODSCommand(IRODS.sendDisconnect)
-    cmd.deferred.addCallbacks(success, print_st)
-    cmds.append(cmd)
 
-    # XXX had to remove connector? no idea why
-    def clientConnectionLost(self, reason):
-        log.msg('Lost connection')
-        reason.printTraceback()
+    def connectionFailed(f):
+        print "Connection Failed:", f
         reactor.stop()
 
-    i = IRODSClientFactory(cmds)
-    i.clientConnectionLost = clientConnectionLost
-    log.startLogging(sys.stdout)
-    reactor.connectTCP('arcs-df.vpac.org', 1247, i)
-    reactor.run()
+    def connectionMade(irodsClient):
+        d = irodsClient.sendConnect(proxy_user='rods', proxy_zone='tempZone', client_zone='tempZone', client_user='rods')
+        d.addCallbacks(success, print_st)
 
+        d = irodsClient.send_auth_challenge('rods')
+        d.addCallbacks(success, print_st)
+
+        #d = irodsClient.sendApiReq(700)
+        #d.addCallbacks(success, print_st)
+
+        d = irodsClient.obj_stat('/tempZone/home/rods')
+        d.addCallbacks(success, print_st)
+
+        #d = irodsClient.list_objects('/tempZone/home/rods')
+        #d.addCallbacks(success, print_st)
+
+        #d = irodsClient.list_collections('/tempZone/home/rods')
+        #d.addCallbacks(success, print_st)
+
+        d = irodsClient.sendDisconnect()
+        d.addCallbacks(success, print_st)
+        d.addCallback(lambda result: reactor.stop())
+
+    log.startLogging(sys.stdout)
+    creator = ClientCreator(reactor, IRODSClient)
+    creator.connectTCP('localhost', 1247).addCallback(connectionMade).addErrback(connectionFailed)
+    reactor.run()
+    return
 

@@ -47,6 +47,7 @@ connect = Template("""<StartupPack_PI>
 <apiVersion>d</apiVersion>
 <option>$option</option>
 </StartupPack_PI>\n""")
+
 connect_default = {'irodsProt':0, 'reconnFlag': 0,
                    'connectCnt': 0, 'proxy_user': '',
                    'proxy_zone': '', 'client_user': '',
@@ -186,6 +187,7 @@ genQueryOut = Struct('genQueryOut',
                      UBInt32('totalRowCount'),
                      MetaArray(lambda c: c.attriCnt, (sqlResult)),
                     )
+
 
 miscSvrInfo = Struct('miscSvrInfo',
                      SBInt32('serverType'), #RCAT_ENABLED or RCAT_NOT_ENABLED
