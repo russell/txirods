@@ -61,9 +61,13 @@ def success(response):
 
 
 def print_st(error):
-    log.err(error.printTraceback())
+    No_Results = -808000
+    if error.value.errorNumber == -808000:
+        # SQL No Results
+        return None
+    log.err(error)
     # Gulp!
-    return
+    return None
 
 from twisted.internet.protocol import ClientCreator
 
@@ -86,11 +90,11 @@ def main():
         d = irodsClient.obj_stat('/tempZone/home/rods')
         d.addCallbacks(success, print_st)
 
-        #d = irodsClient.list_objects('/tempZone/home/rods')
-        #d.addCallbacks(success, print_st)
+        d = irodsClient.list_objects('/tempZone/home/rods')
+        d.addCallbacks(success, print_st)
 
-        #d = irodsClient.list_collections('/tempZone/home/rods')
-        #d.addCallbacks(success, print_st)
+        d = irodsClient.list_collections('/tempZone/home/rods')
+        d.addCallbacks(success, print_st)
 
         d = irodsClient.sendDisconnect()
         d.addCallbacks(success, print_st)

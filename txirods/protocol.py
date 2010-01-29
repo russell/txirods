@@ -40,12 +40,17 @@ import logging
 from txirods.header import IRODSHeaderHandler
 
 class IRODSGeneralException(Exception):
-    def __init__(self, errorNumber, errorName):
-        self.errorName = errorName
+    def __init__(self, errorNumber):
         self.errorNumber = errorNumber
 
+    def errorName(self):
+        error_name = 'UNKNOWN'
+        if errors.int_to_const.has_key(self.errorNumber):
+            error_name = errors.int_to_const[self.errorNumber]
+        return error_name
+
     def __str__(self):
-        return "General iRODS API exception %s: %s" % (self.errorName, self.errorNumber)
+        return "General iRODS API exception %s: %s" % (self.errorName(), self.errorNumber)
 
 
 class GSIAuth(object):
@@ -256,13 +261,8 @@ class IRODSChannel(Protocol):
         self.header_len = self.header_len - len(data[:self.header_len])
 
         if self.response.intinfo < 0:
-            error_name = 'UNKNOWN'
-            if errors.int_to_const.has_key(self.response.intinfo):
-                error_name = errors.int_to_const[self.response.intinfo]
-            try:
-                raise IRODSGeneralException(self.response.intinfo, error_name)
-            except:
-                self.nextDeferred.errback(failure.Failure())
+            self.nextDeferred.errback(IRODSGeneralException(self.response.intinfo))
+
 
         return rawdata
 
@@ -376,7 +376,10 @@ class IRODS(IRODSChannel):
                             inx = [501],
                             value = [" = '%s'" % path]),
                          maxRows = 500, options = 32, partialStartIndex = 0)
-        return self.sendApiReq(int_info=702, data=messages.genQueryInp.build(data))
+        d = self.sendApiReq(int_info=702, data=messages.genQueryInp.build(data))
+        d.addErrback(self.sendNextRequest)
+        d.addCallback(self.sendNextRequest)
+        return d
 
 
     def list_collections(self, path=''):
@@ -396,7 +399,9 @@ class IRODS(IRODSChannel):
                             inx = [502],
                             value = [" = '%s'" % path]),
                          maxRows = 500, options = 32, partialStartIndex = 0)
-        return self.sendApiReq(int_info=702, data=messages.genQueryInp.build(data))
+        d = self.sendApiReq(int_info=702, data=messages.genQueryInp.build(data))
+        d.addCallback(self.sendNextRequest)
+        return d
 
 
     def obj_stat(self, path=''):
@@ -414,7 +419,9 @@ class IRODS(IRODSChannel):
                          openFlags = 0,
                          oprType = 0,
                          specColl = None)
-        return self.sendApiReq(int_info=633, data=messages.dataObjInp.build(data))
+        d = self.sendApiReq(int_info=633, data=messages.dataObjInp.build(data))
+        d.addCallback(self.sendNextRequest)
+        return d
 
 
     def put(self, file=None, remotefile=None):
@@ -444,7 +451,6 @@ class IRODS(IRODSChannel):
 
     def sendApiReq(self, int_info=0, err_len=0, bs_len=0, data=''):
         d = defer.Deferred()
-        d.addCallback(self.sendNextRequest)
         r = Request()
         r.deferred = d
         r.msg_type = 'RODS_API_REQ'
@@ -452,7 +458,6 @@ class IRODS(IRODSChannel):
         r.data = data
         self.request_queue.put(r)
         return d
-        #self.sendMessage('RODS_API_REQ', err_len, bs_len, int_info, data)
 
 
     def sendDisconnect(self, err_len=0, bs_len=0, int_info=0, data=''):
@@ -472,7 +477,6 @@ class IRODS(IRODSChannel):
                              'proxy_zone': proxy_zone, 'client_user': client_user,
                              'client_zone': client_zone, 'option': option}
         startup = messages.connect.substitute(self.connect_info)
-        #self.sendMessage('RODS_CONNECT',data=startup)
         d = defer.Deferred()
         d.addCallback(self.finishConnect)
         d.addCallback(self.sendNextRequest)
@@ -511,7 +515,9 @@ class IRODS(IRODSChannel):
 
     def send_auth_challenge(self, password):
         self.password = password
-        return self.sendApiReq(703)
+        d = self.sendApiReq(703)
+        d.addCallback(self.sendNextRequest)
+        return d
 
 
     def auth_challenge(self, data):
@@ -519,7 +525,10 @@ class IRODS(IRODSChannel):
         MAX_PASSWORD_LEN = 50
         CHALLENGE_LEN = 64
         resp_len = CHALLENGE_LEN + MAX_PASSWORD_LEN
+
         resp = data + self.password
+        del self.password
+
         # response is padded with binary nulls
         resp = resp + '\0' * (resp_len - len(resp))
         resp = md5(resp).digest()
