@@ -37,33 +37,6 @@ class Command(object):
     def execute(self, irods):
         return self.command(*self.args, **self.kw)
 
-class IRODSCommand(Command):
-    def __init__(self, command, *args, **kw):
-        self.command = command
-        self.args = args
-        self.kw = kw
-        self.deferred = defer.Deferred()
-
-    def execute(self, irods):
-        return self.command(irods, *self.args, **self.kw)
-
-
-class IRODSAPICommand(IRODSCommand):
-    def __init__(self, int_info, *args, **kw):
-        self.int_info = int_info
-        self.args = args
-        self.kw = kw
-        self.deferred = defer.Deferred()
-        self.state = 0
-        self.data = {}
-
-    def execute(self, irods):
-        return irods.sendMessage('RODS_API_REQ', int_info=self.int_info, *self.args, **self.kw)
-
-    def __cmp__(self, y):
-        return self.int_info.__cmp__(y)
-
-
 
 class IRODSClient(IRODS):
     def connectionLost(self, *a):
