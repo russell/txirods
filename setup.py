@@ -27,5 +27,6 @@ setup(name='txIRODS',
       # -*- Entry points: -*-
       [console_scripts]
       txirods = txirods.client:main
+      ipwd = txirods.clients.ipwd:main
       """,
       )
