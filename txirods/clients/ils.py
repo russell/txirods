@@ -79,7 +79,7 @@ def main():
         def successfullyAuthed(data):
             d = irodsClient.objStat(pwd)
             d.addCallbacks(exists, print_st)
-            d.addErrback(failed)
+            d.addErrback(disconnect)
             return data
 
         def exists(data):
@@ -93,15 +93,15 @@ def main():
             d.addCallback(parse_sqlResult)
             d.addCallback(print_data)
 
-            failed(data)
+            disconnect(data)
 
-        def failed(data):
+        def disconnect(data):
             d = irodsClient.sendDisconnect()
             d.addCallback(lambda result: reactor.stop())
             return data
 
         d = irodsClient.sendAuthChallenge(a.password)
-        d.addCallbacks(successfullyAuthed, failed)
+        d.addCallbacks(successfullyAuthed, disconnect)
 
     creator = ClientCreator(reactor, IRODSClient)
     creator.connectTCP('localhost', 1247).addCallback(connectionMade).addErrback(connectionFailed)
