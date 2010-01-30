@@ -617,3 +617,8 @@ class IRODS(IRODSChannel):
             self.handleAuthChallangeResponse(data)
             return
 
+        # handle empty reponse messages
+        if self.int_info in [681,]:
+            self.nextDeferred.callback('')
+            return
+
