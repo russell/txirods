@@ -64,7 +64,6 @@ def main():
         d.addErrback(print_st)
 
         def successfullyAuthed(data):
-            print "test"
             d = irodsClient.objStat(pwd)
             d.addCallbacks(success, print_st)
 
