@@ -359,7 +359,7 @@ class IRODS(IRODSChannel):
         log.msg("\nFinish connection, by setting up api and version info\n", debug=True)
 
 
-    def list_objects(self, path=''):
+    def listObjects(self, path=''):
         """
         list the objects in a collection at path
         """
@@ -382,7 +382,7 @@ class IRODS(IRODSChannel):
         return d
 
 
-    def list_collections(self, path=''):
+    def listCllections(self, path=''):
         """
         list the collections in a collection at path
         """
@@ -405,7 +405,7 @@ class IRODS(IRODSChannel):
         return d
 
 
-    def obj_stat(self, path=''):
+    def objStat(self, path=''):
         """
         stat the details of an object
         """
@@ -472,7 +472,8 @@ class IRODS(IRODSChannel):
         return d
 
 
-    def sendConnect(self, reconnFlag=0, connectCnt=0, proxy_user='', proxy_zone='', client_user='', client_zone='', option=''):
+    def sendConnect(self, reconnFlag=0, connectCnt=0, proxy_user='',
+                    proxy_zone='', client_user='', client_zone='', option=''):
         log.msg("\nsendConnect\n", logging.INFO)
         self.connect_info = {'irodsProt':self.api, 'reconnFlag': reconnFlag,
                              'connectCnt': connectCnt, 'proxy_user':proxy_user,
@@ -500,7 +501,13 @@ class IRODS(IRODSChannel):
         self.consumer = None
 
 
-    def auth_gsi(self, data, first=False):
+
+    def sendAuthGsi(self):
+        d = self.sendApiReq(711)
+        d.addCallback(self.sendNextRequest)
+        return d
+
+    def handleAuthGsi(self, data, first=False):
         """
         irods GSI auth reply
         """
@@ -515,14 +522,14 @@ class IRODS(IRODSChannel):
         return
 
 
-    def send_auth_challenge(self, password):
+    def sendAuthChallenge(self, password):
         self.password = password
         d = self.sendApiReq(703)
         d.addCallback(self.sendNextRequest)
         return d
 
 
-    def auth_challenge(self, data):
+    def handleAuthChallange(self, data):
         log.msg("\nChallenge\n" + repr(data), debug=True)
         MAX_PASSWORD_LEN = 50
         CHALLENGE_LEN = 64
@@ -544,10 +551,14 @@ class IRODS(IRODSChannel):
         self.sendMessage(msg_type='RODS_API_REQ', int_info=704, data=resp + userandzone + '\0')
 
 
-    def auth_challange_response(self, data):
+    def handleAuthChallangeResponse(self, data):
         log.msg("\nSuccessfully authed\n", debug=True)
         self.nextDeferred.callback("Authed")
 
+    def miscServerInfo(self):
+        d = self.sendApiReq(700)
+        d.addCallback(self.sendNextRequest)
+        return d
 
     def processMessage(self, data):
         """
@@ -573,16 +584,16 @@ class IRODS(IRODSChannel):
             return
 
         if self.int_info == 703:
-            self.auth_challenge(data)
+            self.handleAuthChallange(data)
             return
 
 
     def processOther(self, data):
         log.msg("\nPROCESSOTHER\n", debug=True)
         if self.int_info == 711:
-            self.auth_gsi(data, True)
+            self.handleAuthGsi(data, True)
             return True
         if self.int_info == 704:
-            self.auth_challange_response(data)
+            self.handleAuthChallangeResponse(data)
             return
 

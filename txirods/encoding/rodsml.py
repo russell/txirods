@@ -31,12 +31,11 @@ class SimpleXMLHandler(ContentHandler):
     def endDocument(self):
         pass
 
+
 def SimpleXMLParser(data):
     parser = make_parser()
     handler = SimpleXMLHandler()
     parser.setContentHandler(handler)
     parser.feed(data)
     return handler.data
-
-
 

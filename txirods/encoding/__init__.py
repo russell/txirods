@@ -11,3 +11,4 @@ rods2_1_binary = {
     700: miscSvrInfo,
     702: genQueryOut,
 }
+
