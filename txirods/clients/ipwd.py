@@ -36,6 +36,11 @@ def main():
     c = ConfigParser()
     c.read()
     pwd = c.irodsCwd
+    user = c.irodsUserName
+    zone = c.irodsZone
+
+    a = AuthParser()
+    a.read()
 
     log_level = logging.WARNING # default
     if opts.verbose == 1:
@@ -55,17 +60,25 @@ def main():
         reactor.stop()
 
     def connectionMade(irodsClient):
-        d = irodsClient.sendConnect(proxy_user='rods', proxy_zone='tempZone', client_zone='tempZone', client_user='rods')
+        d = irodsClient.sendConnect(proxy_user=user, proxy_zone=zone, client_zone=zone, client_user=user)
         d.addErrback(print_st)
 
-        d = irodsClient.sendAuthChallenge('rods')
-        d.addErrback(print_st)
+        def successfullyAuthed(data):
+            print "test"
+            d = irodsClient.objStat(pwd)
+            d.addCallbacks(success, print_st)
 
-        d = irodsClient.objStat(pwd)
-        d.addCallbacks(success, print_st)
+            d = irodsClient.sendDisconnect()
+            d.addCallback(lambda result: reactor.stop())
+            return data
 
-        d = irodsClient.sendDisconnect()
-        d.addCallback(lambda result: reactor.stop())
+        def failedAuth(data):
+            d = irodsClient.sendDisconnect()
+            d.addCallback(lambda result: reactor.stop())
+            return data
+
+        d = irodsClient.sendAuthChallenge(a.password)
+        d.addCallbacks(successfullyAuthed, failedAuth)
 
     creator = ClientCreator(reactor, IRODSClient)
     creator.connectTCP('localhost', 1247).addCallback(connectionMade).addErrback(connectionFailed)
