@@ -6,7 +6,7 @@ from txirods import config
 
 class ConfigParserTestCase(unittest.TestCase):
 
-    def test_version_parse(self):
+    def test_parse(self):
         config_file = """# iRODS personal configuration file.
 #
 # This file was automatically created during iRODS installation.
