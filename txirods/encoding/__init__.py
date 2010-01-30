@@ -1,14 +1,21 @@
 
 from txirods.encoding.binary import rodsObjStat, genQueryOut, miscSvrInfo
+from txirods.encoding.binary import collInp, genQueryInp, dataObjInp
 from txirods.encoding.rodsml import SimpleXMLParser
 
 rods2_1_generic = {
     'RODS_VERSION': SimpleXMLParser
 }
 
-rods2_1_binary = {
+rods2_1_binary_inp = {
+    633: dataObjInp,
+    606: dataObjInp,
+    681: collInp,
+    702: genQueryInp,
+}
+
+rods2_1_binary_out = {
     633: rodsObjStat,
     700: miscSvrInfo,
     702: genQueryOut,
 }
-

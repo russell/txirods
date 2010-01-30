@@ -324,7 +324,8 @@ class IRODSChannel(Protocol):
         log.msg("\nDONE PROCESSING\n")
 
 
-from txirods.encoding import rods2_1_binary, rods2_1_generic
+from txirods.encoding import rods2_1_binary_inp, rods2_1_generic, \
+                        rods2_1_binary_out
 
 class IRODS(IRODSChannel):
     def __init__(self):
@@ -333,7 +334,8 @@ class IRODS(IRODSChannel):
         self.api = 0
         self.consumer = None
         self.data = ''
-        self.api_reponse_map = rods2_1_binary
+        self.api_reponse_map = rods2_1_binary_out
+        self.api_request_map = rods2_1_binary_inp
         self.generic_reponse_map = rods2_1_generic
         self.request_queue = defer.DeferredQueue()
         self.nextDeferred = None
@@ -376,12 +378,29 @@ class IRODS(IRODSChannel):
                             inx = [501],
                             value = [" = '%s'" % path]),
                          maxRows = 500, options = 32, partialStartIndex = 0)
-        d = self.sendApiReq(int_info=702, data=messages.genQueryInp.build(data))
+        d = self.sendApiReq(int_info=702,
+                            data=self.api_request_map[702].build(data))
         d.addBoth(self.sendNextRequest)
         return d
 
 
-    def listCllections(self, path=''):
+    def mkcoll(self, path=''):
+        """
+        make a new collection
+        """
+        data = Container(collName = path,
+                         flags = 0,
+                         oprType = 0,
+                         keyValPair = Container(len = 0,
+                                                keyWords = None,
+                                                values = None),)
+        d = self.sendApiReq(int_info=681,
+                            data=self.api_request_map[681].build(data))
+        d.addBoth(self.sendNextRequest)
+        return d
+
+
+    def listCollections(self, path=''):
         """
         list the collections in a collection at path
         """
@@ -398,7 +417,8 @@ class IRODS(IRODSChannel):
                             inx = [502],
                             value = [" = '%s'" % path]),
                          maxRows = 500, options = 32, partialStartIndex = 0)
-        d = self.sendApiReq(int_info=702, data=messages.genQueryInp.build(data))
+        d = self.sendApiReq(int_info=702,
+                            data=self.api_request_map[702].build(data))
         d.addBoth(self.sendNextRequest)
         return d
 
@@ -418,7 +438,8 @@ class IRODS(IRODSChannel):
                          openFlags = 0,
                          oprType = 0,
                          specColl = None)
-        d = self.sendApiReq(int_info=633, data=messages.dataObjInp.build(data))
+        d = self.sendApiReq(int_info=633,
+                            data=self.api_request_map[633].build(data))
         d.addBoth(self.sendNextRequest)
         return d
 
@@ -442,7 +463,8 @@ class IRODS(IRODSChannel):
                          openFlags = 2,
                          oprType = 1,
                          specColl = None)
-        self.sendApiReq(int_info=606, bs_len=size, data=messages.dataObjInp.build(data))
+        d = self.sendApiReq(int_info=606, bs_len=size,
+                            data=self.api_request_map[606].build(data))
         p = f.open('rb')
         d = basic.FileSender().beginFileTransfer(p, self.transport)
         d.addCallback(self.nextDeferred.callback)

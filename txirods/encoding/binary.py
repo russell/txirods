@@ -126,7 +126,15 @@ specColl = Struct('specColl',
                  )
 
 
-rodsObjStat = Struct('rodsObjStat_t',
+collInp = Struct('collInp',
+                 CString('collName'),
+                 UBInt32('flags'),
+                 UBInt32('oprType'),
+                 keyValPair
+                )
+
+
+rodsObjStat = Struct('rodsObjStat',
                      UBInt64('objSize'),
                      objType,
                      UBInt32('dataMode'),
