@@ -59,7 +59,7 @@ def print_obj_table(data):
         print row['COL_DATA_SIZE'].ljust(lens['COL_DATA_SIZE']),
         print time.strftime('%Y-%m-%d %H:%M',
                             time.localtime(float(row['COL_D_MODIFY_TIME']))),
-        print row['COL_COLL_NAME'].ljust(lens['COL_COLL_NAME']) + row['COL_DATA_NAME']
+        print row['COL_COLL_NAME'].ljust(lens['COL_COLL_NAME']) + '/' + row['COL_DATA_NAME']
     return
 
 
