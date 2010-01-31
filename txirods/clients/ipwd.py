@@ -67,17 +67,16 @@ def main():
             d = irodsClient.objStat(pwd)
             d.addCallbacks(success, print_st)
 
-            d = irodsClient.sendDisconnect()
-            d.addCallback(lambda result: reactor.stop())
+            disconnect(data)
             return data
 
-        def failedAuth(data):
+        def disconnect(data):
             d = irodsClient.sendDisconnect()
             d.addCallback(lambda result: reactor.stop())
             return data
 
         d = irodsClient.sendAuthChallenge(a.password)
-        d.addCallbacks(successfullyAuthed, failedAuth)
+        d.addCallbacks(successfullyAuthed, disconnect)
 
     creator = ClientCreator(reactor, IRODSClient)
     creator.connectTCP('localhost', 1247).addCallback(connectionMade).addErrback(connectionFailed)
