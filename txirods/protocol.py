@@ -408,7 +408,7 @@ class IRODS(IRODSChannel):
 
     def rmcoll(self, path='', recursive=False):
         """
-        make a new collection
+        remove collection
         """
         data = Container(collName = path,
                          flags = 0,
