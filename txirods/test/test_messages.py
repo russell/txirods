@@ -54,7 +54,19 @@ class XMLMessageTestCase(unittest.TestCase):
 
 class BinaryMessageTestCase(unittest.TestCase):
 
-    def testGenQueryMarshall(self):
+    def testCollInpMarshall(self):
+        coll_marshalled = '/tempZone/home/rods/test8\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01recursiveOpr\x00\x00'
+        coll_parsed = binary.collInp.parse(coll_marshalled)
+        coll_unmarshalled = Container(collName = '/tempZone/home/rods/test8', flags = 0, keyValPair = Container(keyWords = ['recursiveOpr'], len = 1, values = ['']), oprType = 0)
+
+        self.assertTrue(coll_parsed == coll_unmarshalled)
+
+        coll_generated = binary.collInp.build(coll_unmarshalled)
+
+        self.assertTrue(coll_generated == coll_marshalled)
+
+
+    def testGenQueryInpMarshall(self):
         genquery_marshalled = "\x00\x00\x01\xf4\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00 \x00\x00\x00\x00%@#ANULLSTR$%\x00%@#ANULLSTR$%\x00\x00\x00\x00\x07\x00\x00\x01\xf5\x00\x00\x01\x93\x00\x00\x01\x91\x00\x00\x01\xa5\x00\x00\x01\x97\x00\x00\x01\xa4\x00\x00\x01\xa3\x00\x00\x00\x01\x00\x00\x00\x01\x00\x00\x00\x01\x00\x00\x00\x01\x00\x00\x00\x01\x00\x00\x00\x01\x00\x00\x00\x01\x00\x00\x00\x01\x00\x00\x01\xf5 = '/ARCS/home/russell.sim'\x00"
         genquery_parsed = binary.genQueryInp.parse(genquery_marshalled)
         genquery_unmarshalled = Container(continueInx = 0, inxIvalPair = Container(inx = [501, 403, 401, 421, 407, 420, 419], len = 7, value = [1, 1, 1, 1, 1, 1, 1]), inxValPair = Container(inx = [501], len = 1, value = [" = '/ARCS/home/russell.sim'"]), keyValPair = Container(keyWords = None, len = 0, values = None), maxRows = 500, options = 32, partialStartIndex = 0)
