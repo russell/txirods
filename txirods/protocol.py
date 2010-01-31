@@ -161,6 +161,8 @@ class Request(object):
     def __init__(self):
         self.deferred = defer.Deferred()
         self.int_info = 0
+        self.err_len = 0
+        self.bs_len = 0
         self.msg_type =''
         self.data = ''
 
@@ -345,7 +347,11 @@ class IRODS(IRODSChannel):
         log.msg('===========SEND=REQUEST============')
         self.nextDeferred = request.deferred
         self.int_info = request.int_info
-        self.sendMessage(request.msg_type, int_info=request.int_info, data=request.data)
+        self.sendMessage(request.msg_type,
+                         int_info=request.int_info,
+                         bs_len=request.bs_len,
+                         err_len=request.err_len,
+                         data=request.data)
 
 
     def sendNextRequest(self, data):
@@ -522,6 +528,8 @@ class IRODS(IRODSChannel):
         r.deferred = d
         r.msg_type = 'RODS_API_REQ'
         r.int_info = int_info
+        r.bs_len = bs_len
+        r.err_len = err_len
         r.data = data
         self.request_queue.put(r)
         return d
