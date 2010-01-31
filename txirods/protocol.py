@@ -638,7 +638,7 @@ class IRODS(IRODSChannel):
             return
 
         # handle empty reponse messages
-        if self.int_info in [681,]:
+        if self.int_info in [681, 606]:
             if self.response.intinfo >= 0:
                 self.nextDeferred.callback('')
             return
