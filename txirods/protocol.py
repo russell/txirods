@@ -400,16 +400,20 @@ class IRODS(IRODSChannel):
         return d
 
 
-    def rmcoll(self, path=''):
+    def rmcoll(self, path='', recursive=False):
         """
         make a new collection
         """
         data = Container(collName = path,
                          flags = 0,
                          oprType = 0,
-                         keyValPair = Container(keyWords = ['recursiveOpr'],
-                                                len = 1,
-                                                values = ['']))
+                         keyValPair = Container(keyWords = None,
+                                                len = 0,
+                                                values = None))
+        if recursive:
+            data.keyValPair = Container(keyWords = ['recursiveOpr'],
+                                        len = 1,
+                                        values = [''])
         d = self.sendApiReq(int_info=679,
                             data=self.api_request_map[679].build(data))
         d.addBoth(self.sendNextRequest)
