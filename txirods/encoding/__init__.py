@@ -9,6 +9,7 @@ rods2_1_generic = {
 }
 
 rods2_1_binary_inp = {
+    615: dataObjInp,
     633: dataObjInp,
     606: dataObjInp,
     681: collInp,

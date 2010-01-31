@@ -491,6 +491,31 @@ class IRODS(IRODSChannel):
         return d
 
 
+    def rmobj(self, path='', force=False):
+        """
+        unlink an object from the irods file system
+        """
+        data = Container(keyValPair = Container(len = 0,
+                                                keyWords = None,
+                                                values = None),
+                         createMode = 0,
+                         dataSize = 0,
+                         numThreads = 0,
+                         objPath = path,
+                         offset = 0,
+                         openFlags = 0,
+                         oprType = 0,
+                         specColl = None)
+        if force:
+            data.keyValPair = Container(keyWords = ['forceFlag'],
+                                        len = 1,
+                                        values = [''])
+        d = self.sendApiReq(int_info=615,
+                            data=self.api_request_map[615].build(data))
+        d.addBoth(self.sendNextRequest)
+        return d
+
+
     def sendApiReq(self, int_info=0, err_len=0, bs_len=0, data=''):
         d = defer.Deferred()
         r = Request()
@@ -638,7 +663,7 @@ class IRODS(IRODSChannel):
             return
 
         # handle empty reponse messages
-        if self.int_info in [681, 606]:
+        if self.int_info in [681, 606, 615]:
             if self.response.intinfo >= 0:
                 self.nextDeferred.callback('')
             return

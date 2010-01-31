@@ -33,5 +33,6 @@ setup(name='txIRODS',
       iput = txirods.clients.iput:main
       imkdir = txirods.clients.imkdir:main
       irmdir = txirods.clients.irmdir:main
+      irm = txirods.clients.irm:main
       """,
       )
