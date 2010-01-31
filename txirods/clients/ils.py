@@ -27,7 +27,7 @@ def parse_sqlResult(data):
             new_data[r][col.const] = col.value[r]
     return new_data
 
-def print_table(data):
+def print_coll_table(data):
     if not data:
         return
     lens =dict.fromkeys(data[0], 0)
@@ -42,6 +42,24 @@ def print_table(data):
         print time.strftime('%Y-%m-%d %H:%M',
                             time.localtime(float(row['COL_COLL_MODIFY_TIME']))),
         print row['COL_COLL_NAME'].ljust(lens['COL_COLL_NAME'])
+    return
+
+def print_obj_table(data):
+    if not data:
+        return
+    lens =dict.fromkeys(data[0], 0)
+    for row in data:
+        for k, v in row.items():
+            l = len(v)
+            if l > lens[k]:
+                lens[k] = l
+    for row in data:
+        print '-',
+        print row['COL_D_OWNER_NAME'].ljust(lens['COL_D_OWNER_NAME']),
+        print row['COL_DATA_SIZE'].ljust(lens['COL_DATA_SIZE']),
+        print time.strftime('%Y-%m-%d %H:%M',
+                            time.localtime(float(row['COL_D_MODIFY_TIME']))),
+        print row['COL_COLL_NAME'].ljust(lens['COL_COLL_NAME']) + row['COL_DATA_NAME']
     return
 
 
@@ -97,12 +115,12 @@ def main():
             d = irodsClient.listCollections(pwd)
             d.addErrback(print_st)
             d.addCallback(parse_sqlResult)
-            d.addCallback(print_table)
+            d.addCallback(print_coll_table)
 
             d = irodsClient.listObjects(pwd)
             d.addErrback(print_st)
             d.addCallback(parse_sqlResult)
-            d.addCallback(print_table)
+            d.addCallback(print_obj_table)
 
             disconnect(data)
 

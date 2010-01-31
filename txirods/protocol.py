@@ -370,9 +370,9 @@ class IRODS(IRODSChannel):
                                                 values = None),
                          continueInx = 0,
                          inxIvalPair = Container(
-                            len = 7,
-                            inx = [501, 403, 401, 421, 407, 420, 419],
-                            value = [1, 1, 1, 1, 1, 1, 1]),
+                            len = 8,
+                            inx = [501, 403, 401, 411, 421, 407, 420, 419],
+                            value = [1, 1, 1, 1, 1, 1, 1, 1]),
                          inxValPair = Container(
                             len = 1,
                             inx = [501],
