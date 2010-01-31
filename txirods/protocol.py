@@ -400,6 +400,22 @@ class IRODS(IRODSChannel):
         return d
 
 
+    def rmcoll(self, path=''):
+        """
+        make a new collection
+        """
+        data = Container(collName = path,
+                         flags = 0,
+                         oprType = 0,
+                         keyValPair = Container(keyWords = ['recursiveOpr'],
+                                                len = 1,
+                                                values = ['']))
+        d = self.sendApiReq(int_info=679,
+                            data=self.api_request_map[679].build(data))
+        d.addBoth(self.sendNextRequest)
+        return d
+
+
     def listCollections(self, path=''):
         """
         list the collections in a collection at path
@@ -518,7 +534,6 @@ class IRODS(IRODSChannel):
 
     def unregisterConsumer(self):
         self.consumer = None
-
 
 
     def sendAuthGsi(self):

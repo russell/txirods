@@ -133,6 +133,11 @@ collInp = Struct('collInp',
                  keyValPair
                 )
 
+collOprStat = Struct('collOprStat',
+                     UBInt32('filesCnt'),
+                     UBInt32('totalFileCnt'),
+                     UBInt64('bytesWritten'),
+                     CString('lastObjPath'))
 
 rodsObjStat = Struct('rodsObjStat',
                      UBInt64('objSize'),
