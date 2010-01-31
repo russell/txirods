@@ -486,8 +486,9 @@ class IRODS(IRODSChannel):
         d = self.sendApiReq(int_info=606, bs_len=size,
                             data=self.api_request_map[606].build(data))
         p = f.open('rb')
-        d = basic.FileSender().beginFileTransfer(p, self.transport)
-        d.addCallback(self.nextDeferred.callback)
+        transfer = basic.FileSender().beginFileTransfer(p, self.transport)
+        d.addBoth(self.sendNextRequest)
+        return d
 
 
     def sendApiReq(self, int_info=0, err_len=0, bs_len=0, data=''):
