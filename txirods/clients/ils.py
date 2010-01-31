@@ -1,6 +1,7 @@
 import sys
 import logging
 import time
+from os import path
 
 from twisted.python import log
 from txirods.client import IRODSClient
@@ -27,41 +28,66 @@ def parse_sqlResult(data):
             new_data[r][col.const] = col.value[r]
     return new_data
 
-def print_coll_table(data):
-    if not data:
-        return
-    lens =dict.fromkeys(data[0], 0)
-    for row in data:
-        for k, v in row.items():
-            l = len(v)
-            if l > lens[k]:
-                lens[k] = l
-    for row in data:
-        print 'c',
-        print row['COL_COLL_OWNER_NAME'].ljust(lens['COL_COLL_OWNER_NAME']),
-        print time.strftime('%Y-%m-%d %H:%M',
-                            time.localtime(float(row['COL_COLL_MODIFY_TIME']))),
-        print row['COL_COLL_NAME'].ljust(lens['COL_COLL_NAME'])
-    return
+class PrettyPrinter(object):
+    def __init__(self):
+        self.lens = {'TYPE': 1, 'NAME': 0,
+                     'OWNER': 0, 'MODIFIED': 0,
+                     'MODE': 0, 'SIZE': 0}
+        self.data = []
 
-def print_obj_table(data):
-    if not data:
-        return
-    lens =dict.fromkeys(data[0], 0)
-    for row in data:
-        for k, v in row.items():
-            l = len(v)
-            if l > lens[k]:
-                lens[k] = l
-    for row in data:
-        print '-',
-        print row['COL_D_OWNER_NAME'].ljust(lens['COL_D_OWNER_NAME']),
-        print row['COL_DATA_SIZE'].ljust(lens['COL_DATA_SIZE']),
-        print time.strftime('%Y-%m-%d %H:%M',
-                            time.localtime(float(row['COL_D_MODIFY_TIME']))),
-        print row['COL_COLL_NAME'].ljust(lens['COL_COLL_NAME']) + '/' + row['COL_DATA_NAME']
-    return
+    def coll_table(self, data):
+        if not data:
+            return
+        coll_map = {'COL_COLL_NAME': 'NAME',
+                   'COL_COLL_MODIFY_TIME': 'MODIFIED',
+                   'COL_COLL_OWNER_NAME': 'OWNER',
+                  }
+        for row in data:
+            coll = {'TYPE': 'c', 'SIZE': '0'}
+            for k, v in row.items():
+                if coll_map.has_key(k):
+                    k = coll_map[k]
+                    coll[k] = v
+                    if k == 'NAME':
+                        coll[k] = path.basename(v)
+                    l = len(v)
+                    if l > self.lens[k]:
+                        self.lens[k] = l
+            self.data.append(coll)
+        return data
 
+    def obj_table(self, data):
+        if not data:
+            return
+        obj_map = {'COL_DATA_NAME': 'NAME',
+                   'COL_D_MODIFY_TIME': 'MODIFIED',
+                   'COL_DATA_SIZE': 'SIZE',
+                   'COL_D_OWNER_NAME': 'OWNER',
+                   'COL_DATA_MODE': 'MODE',
+                  }
+        for row in data:
+            obj = {'TYPE': ''}
+            for k, v in row.items():
+                if obj_map.has_key(k):
+                    k = obj_map[k]
+                    obj[k] = v
+                    l = len(v)
+                    if l > self.lens[k]:
+                        self.lens[k] = l
+            self.data.append(obj)
+        return data
+
+    def prettyprint(self, data):
+        lens = self.lens
+        data = self.data
+        for row in data:
+            print row['TYPE'].ljust(lens['TYPE']),
+            print row['OWNER'].ljust(lens['OWNER']),
+            print row['SIZE'].ljust(lens['SIZE']),
+            print time.strftime('%Y-%m-%d %H:%M',
+                                time.localtime(float(row['MODIFIED']))),
+            print row['NAME'].ljust(lens['NAME'])
+        return
 
 def main():
     # Late import, in case this project becomes a library, never to be run as main again.
@@ -112,15 +138,17 @@ def main():
             return data
 
         def exists(data):
+            printer = PrettyPrinter()
             d = irodsClient.listCollections(pwd)
             d.addErrback(print_st)
             d.addCallback(parse_sqlResult)
-            d.addCallback(print_coll_table)
+            d.addCallback(printer.coll_table)
 
             d = irodsClient.listObjects(pwd)
             d.addErrback(print_st)
             d.addCallback(parse_sqlResult)
-            d.addCallback(print_obj_table)
+            d.addCallback(printer.obj_table)
+            d.addCallback(printer.prettyprint)
 
             disconnect(data)
 
