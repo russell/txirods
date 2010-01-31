@@ -13,9 +13,7 @@ def print_st(error):
     if error.value.errorNumber == -808000:
         # SQL No Results
         return None
-    log.err(error)
-    # Gulp!
-    return None
+    return error
 
 
 def main():
