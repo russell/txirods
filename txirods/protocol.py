@@ -493,6 +493,29 @@ class IRODS(IRODSChannel):
         return d
 
 
+    def get(self, file=None, remotefile=None, size=0):
+        """
+        get a file from irods
+        """
+
+        localfile = open(file, 'wb')
+        data = Container(createMode = 0,
+                         dataSize = size,
+                         keyValPair = Container(keyWords = None,
+                                                len = 0,
+                                                values = None),
+                         numThreads = 0,
+                         objPath = remotefile,
+                         offset = 0,
+                         openFlags = 0,
+                         oprType = 2,
+                         specColl = None)
+        d = self.sendApiReq(int_info=608, data=self.api_request_map[608].build(data))
+        d.addBoth(self.sendNextRequest)
+        self.bytestream_consumer = localfile
+        return d
+
+
     def rmobj(self, path='', force=False):
         """
         unlink an object from the irods file system
