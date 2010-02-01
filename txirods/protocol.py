@@ -643,7 +643,7 @@ class IRODS(IRODSChannel):
                 self.nextDeferred.callback(data)
             return
 
-        if self.msg_type in self.generic_reponse_map:
+        if self.response.msg_type in self.generic_reponse_map:
             try:
                 data = self.generic_reponse_map[self.msg_type](data)
             except:
