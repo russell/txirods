@@ -3,11 +3,13 @@ import logging
 import os
 from os import path
 
-from twisted.python import log
+from twisted.python import log, filepath
+from twisted.internet import defer, reactor
+from twisted.internet.protocol import ClientCreator
+from twisted.protocols import basic
+
 from txirods.client import IRODSClient
 from txirods.config import ConfigParser, AuthParser
-from twisted.internet import reactor
-from twisted.internet.protocol import ClientCreator
 
 
 def print_st(error):
@@ -69,7 +71,12 @@ def main():
         def exists(data):
             localfile = path.join(os.getcwd(), args[0])
             remotefile = path.join(pwd, args[0])
-            d = irodsClient.put(localfile, remotefile)
+
+            f = filepath.FilePath(localfile)
+            size = f.getsize()
+            p = f.open('rb')
+            producer_cb = lambda x: basic.FileSender().beginFileTransfer(p, irodsClient.transport)
+            d = irodsClient.put(defer.Deferred().addCallback(producer_cb), remotefile, size)
             d.addErrback(print_st)
             return disconnect(data)
 

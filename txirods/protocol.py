@@ -23,7 +23,7 @@ from twisted.internet.protocol import Protocol
 from twisted.internet import interfaces
 from twisted.internet import defer, reactor
 from twisted.protocols import basic
-from twisted.python import log, failure, filepath
+from twisted.python import log, failure
 from zope.interface import implements
 import struct
 from txirods.encoding import binary as messages
@@ -219,6 +219,7 @@ class Request(object):
         self.msg_type =''
         self.data = ''
         self.bs_consumer = None
+        self.data_stream_cb = None
 
 
 class Response(object):
@@ -406,6 +407,9 @@ class IRODS(IRODSChannel):
                          err_len=request.err_len,
                          data=request.data)
 
+        if request.data_stream_cb:
+            request.data_stream_cb.callback(None)
+
 
     def sendNextRequest(self, data):
         self.request_queue.get().addCallback(self.sendRequest)
@@ -523,13 +527,17 @@ class IRODS(IRODSChannel):
         return d
 
 
-    def put(self, file=None, remotefile=None):
+    def put(self, producer_cb, objPath, size):
         """
         send a file to irods
-        """
-        f = filepath.FilePath(file)
-        size = f.getsize()
 
+        :param producer_cb: a callback that registers a producer to start producing over clients transport.
+        :param objPath: the location of the object
+        :type objPath: String
+        :param size: the size of the object in bytes
+        :type size: Int
+        :rtype: :class:`~twisted.internet.defer.Deferred`
+        """
         data = Container(createMode = 33261,
                          dataSize = size,
                          keyValPair = Container(
@@ -537,15 +545,14 @@ class IRODS(IRODSChannel):
                              keyWords = ['dataType', 'dataIncluded'],
                              values = ['generic', '']),
                          numThreads = 0,
-                         objPath = remotefile,
+                         objPath = objPath,
                          offset = 0,
                          openFlags = 2,
                          oprType = 1,
                          specColl = None)
         d = self.sendApiReq(int_info=606, bs_len=size,
-                            data=self.api_request_map[606].build(data))
-        p = f.open('rb')
-        transfer = basic.FileSender().beginFileTransfer(p, self.transport)
+                            data=self.api_request_map[606].build(data),
+                            data_stream_cb=producer_cb)
         d.addBoth(self.sendNextRequest)
         return d
 
@@ -606,7 +613,7 @@ class IRODS(IRODSChannel):
         return d
 
 
-    def sendApiReq(self, int_info=0, err_len=0, bs_len=0, data='', bs_consumer=None):
+    def sendApiReq(self, int_info=0, err_len=0, bs_len=0, data='', bs_consumer=None, data_stream_cb=None):
         d = defer.Deferred()
         r = Request()
         r.deferred = d
@@ -615,6 +622,7 @@ class IRODS(IRODSChannel):
         r.bs_len = bs_len
         r.err_len = err_len
         r.data = data
+        r.data_stream_cb = data_stream_cb
         r.bs_consumer = bs_consumer
         self.request_queue.put(r)
         return d
