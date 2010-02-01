@@ -158,6 +158,59 @@ class GSIAuth(object):
         self.producer.unregisterConsumer()
 
 
+class FileRecever(object):
+    """
+    A consumer consumes data from a producer.
+    """
+    implements(interfaces.IConsumer)
+    def __init__(self, filename):
+        self.file = open(filename, 'w')
+
+    def registerProducer(self, producer, streaming):
+        """
+        Register to receive data from a producer.
+
+        This sets self to be a consumer for a producer.  When this object runs
+        out of data (as when a send(2) call on a socket succeeds in moving the
+        last data from a userspace buffer into a kernelspace buffer), it will
+        ask the producer to resumeProducing().
+
+        For L{IPullProducer} providers, C{resumeProducing} will be called once
+        each time data is required.
+
+        For L{IPushProducer} providers, C{pauseProducing} will be called
+        whenever the write buffer fills up and C{resumeProducing} will only be
+        called when it empties.
+
+        @type producer: L{IProducer} provider
+
+        @type streaming: C{bool}
+        @param streaming: C{True} if C{producer} provides L{IPushProducer},
+        C{False} if C{producer} provides L{IPullProducer}.
+
+        @raise RuntimeError: If a producer is already registered.
+
+        @return: C{None}
+        """
+        self.producer = producer
+        self.producerIsStreaming = streaming
+
+    def unregisterProducer(self):
+        """
+        Stop consuming data from a producer, without disconnecting.
+        """
+        if self.producer is not None:
+            del self.producer
+            del self.producerIsStreaming
+            self.file.close()
+            del self.file
+
+    def write(self, data):
+        """
+        The producer will write data by calling this method.
+        """
+        self.file.write(data)
+
 
 class Request(object):
     def __init__(self):
@@ -167,6 +220,7 @@ class Request(object):
         self.bs_len = 0
         self.msg_type =''
         self.data = ''
+        self.bs_consumer = None
 
 
 class Response(object):
@@ -343,6 +397,11 @@ class IRODS(IRODSChannel):
         log.msg('===========SEND=REQUEST============')
         self.nextDeferred = request.deferred
         self.int_info = request.int_info
+
+        if request.bs_consumer:
+            self.bytestream_consumer = request.bs_consumer
+            self.bytestream_consumer.registerProducer(self, False)
+
         self.sendMessage(request.msg_type,
                          int_info=request.int_info,
                          bs_len=request.bs_len,
@@ -493,26 +552,31 @@ class IRODS(IRODSChannel):
         return d
 
 
-    def get(self, file=None, remotefile=None, size=0):
+    def get(self, consumer, objPath, size):
         """
         get a file from irods
+
+        consumer : IConsumer
+        objPath String
+        size : int
         """
 
-        localfile = open(file, 'wb')
         data = Container(createMode = 0,
                          dataSize = size,
                          keyValPair = Container(keyWords = None,
                                                 len = 0,
                                                 values = None),
                          numThreads = 0,
-                         objPath = remotefile,
+                         objPath = objPath,
                          offset = 0,
                          openFlags = 0,
                          oprType = 2,
                          specColl = None)
-        d = self.sendApiReq(int_info=608, data=self.api_request_map[608].build(data))
+
+        d = self.sendApiReq(int_info=608,
+                            data=self.api_request_map[608].build(data),
+                            bs_consumer=consumer)
         d.addBoth(self.sendNextRequest)
-        self.bytestream_consumer = localfile
         return d
 
 
@@ -541,7 +605,7 @@ class IRODS(IRODSChannel):
         return d
 
 
-    def sendApiReq(self, int_info=0, err_len=0, bs_len=0, data=''):
+    def sendApiReq(self, int_info=0, err_len=0, bs_len=0, data='', bs_consumer=None):
         d = defer.Deferred()
         r = Request()
         r.deferred = d
@@ -550,6 +614,7 @@ class IRODS(IRODSChannel):
         r.bs_len = bs_len
         r.err_len = err_len
         r.data = data
+        r.bs_consumer = bs_consumer
         self.request_queue.put(r)
         return d
 
@@ -681,9 +746,11 @@ class IRODS(IRODSChannel):
 
 
     def processByteStream(self, data):
-        if self.bytestream_len == 0:
-            self.nextDeferred.callback('')
         self.bytestream_consumer.write(data)
+        if self.bytestream_len == 0:
+            self.bytestream_consumer.unregisterProducer()
+            self.bytestream_consumer = None
+            self.nextDeferred.callback('')
 
 
     def processOther(self, data):
