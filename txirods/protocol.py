@@ -175,22 +175,20 @@ class FileRecever(object):
         last data from a userspace buffer into a kernelspace buffer), it will
         ask the producer to resumeProducing().
 
-        For L{IPullProducer} providers, C{resumeProducing} will be called once
-        each time data is required.
+        For :class:`~twisted.internet.interfaces.IPullProducer` providers,
+        C{resumeProducing} will be called once each time data is required.
 
-        For L{IPushProducer} providers, C{pauseProducing} will be called
-        whenever the write buffer fills up and C{resumeProducing} will only be
-        called when it empties.
+        For :class:`~twisted.internet.interfaces.IPushProducer` providers,
+        C{pauseProducing} will be called whenever the write buffer fills up
+        and C{resumeProducing} will only be called when it empties.
 
-        @type producer: L{IProducer} provider
-
-        @type streaming: C{bool}
-        @param streaming: C{True} if C{producer} provides L{IPushProducer},
-        C{False} if C{producer} provides L{IPullProducer}.
-
-        @raise RuntimeError: If a producer is already registered.
-
-        @return: C{None}
+        :param producer: :class:`~twisted.internet.interfaces.IProducer` provider
+        :param streaming: True if producer provides
+        :class:`~twisted.internet.interfaces.IPushProducer`, False if producer
+        provides :class:`~twisted.internet.interfaces.IPullProducer`.
+        :type streaming: Bool
+        :raises RuntimeError: If a producer is already registered.
+        :rtype: None
         """
         self.producer = producer
         self.producerIsStreaming = streaming
@@ -556,9 +554,12 @@ class IRODS(IRODSChannel):
         """
         get a file from irods
 
-        consumer : IConsumer
-        objPath String
-        size : int
+        :param consumer: provides :class:`~twisted.internet.interfaces.IConsumer`.
+        :param objPath: the location of the object
+        :type objPath: String
+        :param size: the size of the object in bytes
+        :type size: Int
+        :rtype: :class:`~twisted.internet.defer.Deferred`
         """
 
         data = Container(createMode = 0,
