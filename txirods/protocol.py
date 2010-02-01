@@ -22,12 +22,12 @@
 from twisted.internet.protocol import Protocol
 from twisted.internet import interfaces
 from twisted.internet import defer, reactor
-from twisted.protocols import basic
 from twisted.python import log, failure
 from zope.interface import implements
 import struct
 from txirods.encoding import binary as messages
 from txirods import errors
+from txirods import api
 from md5 import md5
 from xml.sax import make_parser
 from pyGlobus.security import GSSCred, GSSContext, GSSContextException
@@ -441,8 +441,8 @@ class IRODS(IRODSChannel):
                             inx = [501],
                             value = [" = '%s'" % path]),
                          maxRows = 500, options = 32, partialStartIndex = 0)
-        d = self.sendApiReq(int_info=702,
-                            data=self.api_request_map[702].build(data))
+        d = self.sendApiReq(int_info=api.GEN_QUERY_AN,
+                            data=self.api_request_map[api.GEN_QUERY_AN].build(data))
         d.addBoth(self.sendNextRequest)
         return d
 
@@ -457,8 +457,8 @@ class IRODS(IRODSChannel):
                          keyValPair = Container(len = 0,
                                                 keyWords = None,
                                                 values = None),)
-        d = self.sendApiReq(int_info=681,
-                            data=self.api_request_map[681].build(data))
+        d = self.sendApiReq(int_info=api.COLL_CREATE_AN,
+                            data=self.api_request_map[api.COLL_CREATE_AN].build(data))
         d.addBoth(self.sendNextRequest)
         return d
 
@@ -477,8 +477,8 @@ class IRODS(IRODSChannel):
             data.keyValPair = Container(keyWords = ['recursiveOpr'],
                                         len = 1,
                                         values = [''])
-        d = self.sendApiReq(int_info=679,
-                            data=self.api_request_map[679].build(data))
+        d = self.sendApiReq(int_info=api.RM_COLL_AN,
+                            data=self.api_request_map[api.RM_COLL_AN].build(data))
         d.addBoth(self.sendNextRequest)
         return d
 
@@ -500,8 +500,8 @@ class IRODS(IRODSChannel):
                             inx = [502],
                             value = [" = '%s'" % path]),
                          maxRows = 500, options = 32, partialStartIndex = 0)
-        d = self.sendApiReq(int_info=702,
-                            data=self.api_request_map[702].build(data))
+        d = self.sendApiReq(int_info=api.GEN_QUERY_AN,
+                            data=self.api_request_map[api.GEN_QUERY_AN].build(data))
         d.addBoth(self.sendNextRequest)
         return d
 
@@ -521,8 +521,8 @@ class IRODS(IRODSChannel):
                          openFlags = 0,
                          oprType = 0,
                          specColl = None)
-        d = self.sendApiReq(int_info=633,
-                            data=self.api_request_map[633].build(data))
+        d = self.sendApiReq(int_info=api.OBJ_STAT_AN,
+                            data=self.api_request_map[api.OBJ_STAT_AN].build(data))
         d.addBoth(self.sendNextRequest)
         return d
 
@@ -550,8 +550,8 @@ class IRODS(IRODSChannel):
                          openFlags = 2,
                          oprType = 1,
                          specColl = None)
-        d = self.sendApiReq(int_info=606, bs_len=size,
-                            data=self.api_request_map[606].build(data),
+        d = self.sendApiReq(int_info=api.DATA_OBJ_PUT_AN, bs_len=size,
+                            data=self.api_request_map[api.DATA_OBJ_PUT_AN].build(data),
                             data_stream_cb=producer_cb)
         d.addBoth(self.sendNextRequest)
         return d
@@ -581,8 +581,8 @@ class IRODS(IRODSChannel):
                          oprType = 2,
                          specColl = None)
 
-        d = self.sendApiReq(int_info=608,
-                            data=self.api_request_map[608].build(data),
+        d = self.sendApiReq(int_info=api.DATA_OBJ_GET_AN,
+                            data=self.api_request_map[api.DATA_OBJ_GET_AN].build(data),
                             bs_consumer=consumer)
         d.addBoth(self.sendNextRequest)
         return d
@@ -607,8 +607,8 @@ class IRODS(IRODSChannel):
             data.keyValPair = Container(keyWords = ['forceFlag'],
                                         len = 1,
                                         values = [''])
-        d = self.sendApiReq(int_info=615,
-                            data=self.api_request_map[615].build(data))
+        d = self.sendApiReq(int_info=api.DATA_OBJ_UNLINK_AN,
+                            data=self.api_request_map[api.DATA_OBJ_UNLINK_AN].build(data))
         d.addBoth(self.sendNextRequest)
         return d
 
@@ -668,7 +668,7 @@ class IRODS(IRODSChannel):
 
 
     def sendAuthGsi(self):
-        d = self.sendApiReq(711)
+        d = self.sendApiReq(api.GSI_AUTH_REQUEST_AN)
         d.addCallback(self.sendNextRequest)
         return d
 
@@ -689,7 +689,7 @@ class IRODS(IRODSChannel):
 
     def sendAuthChallenge(self, password):
         self.password = password
-        d = self.sendApiReq(703)
+        d = self.sendApiReq(api.AUTH_REQUEST_AN)
         d.addBoth(self.sendNextRequest)
         return d
 
@@ -713,7 +713,9 @@ class IRODS(IRODSChannel):
         userandzone = self.connect_info['proxy_user'] + '#' \
                 + self.connect_info['proxy_zone']
         # pad message with 0
-        self.sendMessage(msg_type='RODS_API_REQ', int_info=704, data=resp + userandzone + '\0')
+        self.sendMessage(msg_type='RODS_API_REQ',
+                         int_info=api.AUTH_RESPONSE_AN,
+                         data=resp + userandzone + '\0')
 
 
     def handleAuthChallangeResponse(self, data):
@@ -722,7 +724,7 @@ class IRODS(IRODSChannel):
             self.nextDeferred.callback("Authed")
 
     def miscServerInfo(self):
-        d = self.sendApiReq(700)
+        d = self.sendApiReq(api.GET_MISC_SVR_INFO_AN)
         d.addCallback(self.sendNextRequest)
         return d
 
@@ -749,7 +751,7 @@ class IRODS(IRODSChannel):
                 self.nextDeferred.callback(data)
             return
 
-        if self.int_info == 703:
+        if self.int_info == api.AUTH_REQUEST_AN:
             self.handleAuthChallange(data)
             return
 
@@ -764,15 +766,17 @@ class IRODS(IRODSChannel):
 
     def processOther(self, data):
         log.msg("\nPROCESSOTHER\n", debug=True)
-        if self.int_info == 711:
+        if self.int_info == api.GSI_AUTH_REQUEST_AN:
             self.handleAuthGsi(data, True)
             return True
-        if self.int_info == 704:
+        if self.int_info == api.AUTH_RESPONSE_AN:
             self.handleAuthChallangeResponse(data)
             return
 
         # handle empty reponse messages
-        if self.int_info in [681, 606, 615]:
+        if self.int_info in [api.COLL_CREATE_AN,
+                             api.DATA_OBJ_PUT_AN,
+                             api.DATA_OBJ_UNLINK_AN]:
             if self.response.intinfo >= 0:
                 self.nextDeferred.callback('')
             return
