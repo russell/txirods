@@ -72,18 +72,20 @@ keyValPair = Struct('keyValPair',
                    )
 
 
-Gen_Query_Mapper = MappingAdapter(UBInt32('const'), int_to_const, const_to_int)
+const_Mapper = MappingAdapter(UBInt32('const'), int_to_const, const_to_int)
+
+key_Mapper = MappingAdapter(UBInt32('key'), int_to_const, const_to_int, encdefault=Pass)
 
 inxIvalPair = Struct('inxIvalPair',
                      UBInt32('len'),
-                     IfThenElse('inx', nulls, MetaArray(count, UBInt32('key')), Null_Pointer),
+                     IfThenElse('inx', nulls, MetaArray(count, key_Mapper), Null_Pointer),
                      IfThenElse('value', nulls, MetaArray(count, UBInt32('value')), Null_Pointer)
                     )
 
 
 inxValPair = Struct('inxValPair',
                      UBInt32('len'),
-                     IfThenElse('inx', nulls, MetaArray(count, UBInt32('key')), Null_Pointer),
+                     IfThenElse('inx', nulls, MetaArray(count, key_Mapper), Null_Pointer),
                      IfThenElse('value', nulls, MetaArray(count, CString('value')), Null_Pointer)
                     )
 
@@ -184,7 +186,7 @@ dataObjInp = Struct('dataObjInp',
 
 
 sqlResult = Struct('sqlResult',
-                   Gen_Query_Mapper,
+                   const_Mapper,
                    UBInt32('len'),
                    Select('value',
                           Null_Pointer,

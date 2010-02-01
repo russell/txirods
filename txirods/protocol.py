@@ -434,13 +434,17 @@ class IRODS(IRODSChannel):
                          continueInx = 0,
                          inxIvalPair = Container(
                             len = 8,
-                            inx = [501, 403, 401, 411, 421, 407, 420, 419],
+                            inx = ['COL_COLL_NAME', 'COL_DATA_NAME',
+                                   'COL_D_DATA_ID', 'COL_D_OWNER_NAME',
+                                   'COL_DATA_MODE', 'COL_DATA_SIZE',
+                                   'COL_D_MODIFY_TIME', 'COL_D_CREATE_TIME'],
                             value = [1, 1, 1, 1, 1, 1, 1, 1]),
                          inxValPair = Container(
                             len = 1,
-                            inx = [501],
+                            inx = ['COL_COLL_NAME'],
                             value = [" = '%s'" % path]),
                          maxRows = 500, options = 32, partialStartIndex = 0)
+        print data
         d = self.sendApiReq(int_info=api.GEN_QUERY_AN,
                             data=self.api_request_map[api.GEN_QUERY_AN].build(data))
         d.addBoth(self.sendNextRequest)
@@ -493,11 +497,17 @@ class IRODS(IRODSChannel):
                          continueInx = 0,
                          inxIvalPair = Container(
                             len = 7,
-                            inx = [501, 503, 508, 509, 510, 511, 512],
+                            inx = ['COL_COLL_NAME',
+                                   'COL_COLL_OWNER_NAME',
+                                   'COL_COLL_CREATE_TIME',
+                                   'COL_COLL_MODIFY_TIME',
+                                   'COL_COLL_TYPE',
+                                   'COL_COLL_INFO1',
+                                   'COL_COLL_INFO2'],
                             value = [1, 1, 1, 1, 1, 1, 1]),
                          inxValPair = Container(
                             len = 1,
-                            inx = [502],
+                            inx = ['COL_COLL_PARENT_NAME'],
                             value = [" = '%s'" % path]),
                          maxRows = 500, options = 32, partialStartIndex = 0)
         d = self.sendApiReq(int_info=api.GEN_QUERY_AN,
