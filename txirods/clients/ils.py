@@ -28,6 +28,7 @@ def parse_sqlResult(data):
             new_data[r][col.const] = col.value[r]
     return new_data
 
+
 class PrettyPrinter(object):
     def __init__(self):
         self.lens = {'TYPE': 1, 'NAME': 0,
