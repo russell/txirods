@@ -20,7 +20,7 @@
 #############################################################################
 
 from twisted.internet.protocol import Protocol
-from twisted.internet.interfaces import IPushProducer
+from twisted.internet import interfaces
 from twisted.internet import defer, reactor
 from twisted.protocols import basic
 from twisted.python import log, failure, filepath
@@ -54,7 +54,7 @@ class IRODSGeneralException(Exception):
 
 
 class GSIAuth(object):
-    implements(IPushProducer)
+    implements(interfaces.IPushProducer)
 
     def beginAuthentication(self, data, consumer, producer):
         self.paused = 0; self.stopped = 0
@@ -147,6 +147,8 @@ class GSIAuth(object):
             self.consumer.msg_len = 0
             self.consumer.unregisterProducer()
             self.producer.unregisterConsumer()
+            # There is a minor delay because the other end cannot
+            # detect when the gsi auth has finished
             reactor.callLater(0.001, self.deferred.callback, True)
         return
 
