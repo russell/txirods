@@ -293,13 +293,6 @@ class IRODSChannel(Protocol):
             return self.processError(data)
 
         if self.bytestream_len:
-            # probably doesn't need buffer
-            if len(data) < self.bytestream_len:
-                self._buffer = self._buffer + data
-                if len(self._buffer) < self.bytestream_len:
-                    return
-                data = self._buffer
-                self._buffer = ''
             self.bytestream_len = self.bytestream_len - len(data)
             return self.processByteStream(data)
 
@@ -337,6 +330,7 @@ class IRODS(IRODSChannel):
         self.msg_len = 0
         self.api = 0
         self.consumer = None
+        self.bytestream_consumer = None
         self.data = ''
         self.api_reponse_map = rods2_1_binary_out
         self.api_request_map = rods2_1_binary_inp
@@ -661,6 +655,12 @@ class IRODS(IRODSChannel):
         if self.int_info == 703:
             self.handleAuthChallange(data)
             return
+
+
+    def processByteStream(self, data):
+        if self.bytestream_len == 0:
+            self.nextDeferred.callback('')
+        self.bytestream_consumer.write(data)
 
 
     def processOther(self, data):
