@@ -238,7 +238,6 @@ class IRODSChannel(Protocol):
         if self.response.int_info < 0:
             self.nextDeferred.errback(IRODSGeneralException(self.response.int_info))
 
-
         return rawdata
 
 

@@ -183,4 +183,3 @@ class IRODSProtocolTestCase(unittest.TestCase):
         self.assertEqual(a.message_len, 0)
         self.assertEqual(a._processed_header, False)
 
-
