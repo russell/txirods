@@ -90,7 +90,7 @@ class PrettyPrinter(object):
             print row['NAME'].ljust(lens['NAME'])
         return
 
-def main():
+def main(*args):
     # Late import, in case this project becomes a library, never to be run as main again.
     import optparse
 

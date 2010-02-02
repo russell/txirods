@@ -20,7 +20,7 @@ def print_st(error):
     return error
 
 
-def main():
+def main(*args):
     # Late import, in case this project becomes a library, never to be run as main again.
     import optparse
 
