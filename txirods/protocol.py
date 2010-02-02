@@ -136,6 +136,17 @@ class IRODSChannel(Protocol):
                     data=''):
         """
         wrap an irods message with a header and send it
+
+        :param msg_type: the message type
+        :type msg_type: str
+        :param err_len: the size of the error component of the message
+        :type err_len: int
+        :param bs_len: the size of the byte stream component of the message
+        :type bs_len: int
+        :param int_info: the const that represents the type of message
+        :type int_info: int
+        :type data: str
+        :rtype: None
         """
         msg_len = len(data)
         self.int_info = int(int_info)
