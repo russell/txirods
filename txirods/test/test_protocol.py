@@ -19,10 +19,6 @@
 #############################################################################
 
 from twisted.trial import unittest
-from twisted.web import server, error
-from twisted.internet import reactor, defer
-from construct import Container
-from txirods import messages
 from txirods import protocol
 from txirods import header
 from twisted.test.proto_helpers import StringTransport
