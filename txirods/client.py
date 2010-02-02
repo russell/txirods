@@ -48,6 +48,14 @@ class IRODS(IRODSChannel):
 
 
     def sendRequest(self, request):
+        """
+        use a request object to configure the sending of a message
+
+        :param request: the request that is to be processed
+        :type :class:`~txirods.protocol.Request`:
+        :rtype: None
+
+        """
         log.msg('===========SEND=REQUEST============')
         self.nextDeferred = request.deferred
         self.int_info = request.int_info
@@ -67,6 +75,12 @@ class IRODS(IRODSChannel):
 
 
     def sendNextRequest(self, data):
+        """
+        send the next queued request
+
+        :param data: the data that the callback recieves
+        :returns: the same data that was passed in unmodified
+        """
         self.request_queue.get().addCallback(self.sendRequest)
         return data
 
@@ -82,6 +96,10 @@ class IRODS(IRODSChannel):
     def listObjects(self, path=''):
         """
         list the objects in a collection at path
+
+        :param path: the location of the collection
+        :type path: str
+        :rtype: :class:`~twisted.internet.defer.Deferred`
         """
         data = Container(keyValPair = Container(len = 0,
                                                 keyWords = None,
@@ -108,6 +126,10 @@ class IRODS(IRODSChannel):
     def mkcoll(self, path=''):
         """
         make a new collection
+
+        :param path: the location of the collection
+        :type path: str
+        :rtype: :class:`~twisted.internet.defer.Deferred`
         """
         data = Container(collName = path,
                          flags = 0,
@@ -124,6 +146,12 @@ class IRODS(IRODSChannel):
     def rmcoll(self, path='', recursive=False):
         """
         remove collection
+
+        :param path: the location of the collection
+        :type path: str
+        :param recursive: recursively delete
+        :type recursive: bool
+        :rtype: :class:`~twisted.internet.defer.Deferred`
         """
         data = Container(collName = path,
                          flags = 0,
@@ -144,6 +172,10 @@ class IRODS(IRODSChannel):
     def listCollections(self, path=''):
         """
         list the collections in a collection at path
+
+        :param path: the location of the collection
+        :type path: str
+        :rtype: :class:`~twisted.internet.defer.Deferred`
         """
         data = Container(keyValPair = Container(len = 0,
                                                 keyWords = None,
@@ -170,9 +202,13 @@ class IRODS(IRODSChannel):
         return d
 
 
-    def objStat(self, path=''):
+    def objStat(self, objPath=''):
         """
         stat the details of an object
+
+        :param objPath: the location of the object
+        :type objPath: str
+        :rtype: :class:`~twisted.internet.defer.Deferred`
         """
         data = Container(keyValPair = Container(len = 0,
                                                 keyWords = None,
@@ -180,7 +216,7 @@ class IRODS(IRODSChannel):
                          createMode = 0,
                          dataSize = 0,
                          numThreads = 0,
-                         objPath = path,
+                         objPath = objPath,
                          offset = 0,
                          openFlags = 0,
                          oprType = 0,
@@ -197,9 +233,9 @@ class IRODS(IRODSChannel):
 
         :param producer_cb: a callback that registers a producer to start producing over clients transport.
         :param objPath: the location of the object
-        :type objPath: String
+        :type objPath: str
         :param size: the size of the object in bytes
-        :type size: Int
+        :type size: int
         :rtype: :class:`~twisted.internet.defer.Deferred`
         """
         data = Container(createMode = 33261,
@@ -227,9 +263,9 @@ class IRODS(IRODSChannel):
 
         :param consumer: provides :class:`~twisted.internet.interfaces.IConsumer`.
         :param objPath: the location of the object
-        :type objPath: String
+        :type objPath: str
         :param size: the size of the object in bytes
-        :type size: Int
+        :type size: int
         :rtype: :class:`~twisted.internet.defer.Deferred`
         """
 
@@ -252,9 +288,15 @@ class IRODS(IRODSChannel):
         return d
 
 
-    def rmobj(self, path='', force=False):
+    def rmobj(self, objPath='', force=False):
         """
         unlink an object from the irods file system
+
+        :param objPath: the location of the object
+        :type objPath: str
+        :param force: force the removal of the object
+        :type force: bool
+        :rtype: :class:`~twisted.internet.defer.Deferred`
         """
         data = Container(keyValPair = Container(len = 0,
                                                 keyWords = None,
@@ -262,7 +304,7 @@ class IRODS(IRODSChannel):
                          createMode = 0,
                          dataSize = 0,
                          numThreads = 0,
-                         objPath = path,
+                         objPath = objPath,
                          offset = 0,
                          openFlags = 0,
                          oprType = 0,
@@ -383,7 +425,7 @@ class IRODS(IRODSChannel):
 
 
     def handleAuthChallangeResponse(self, data):
-        if self.response.intinfo >= 0:
+        if self.response.int_info >= 0:
             log.msg("\nSuccessfully authed\n", debug=True)
             self.nextDeferred.callback("Authed")
 
@@ -441,7 +483,7 @@ class IRODS(IRODSChannel):
         if self.int_info in [api.COLL_CREATE_AN,
                              api.DATA_OBJ_PUT_AN,
                              api.DATA_OBJ_UNLINK_AN]:
-            if self.response.intinfo >= 0:
+            if self.response.int_info >= 0:
                 self.nextDeferred.callback('')
             return
 

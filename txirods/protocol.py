@@ -97,6 +97,18 @@ class FileRecever(object):
 
 
 class Request(object):
+    """
+    This object contains the information required to start sending and
+    recieve a command.
+
+    :var int_info: the message API number
+    :var err_len: the length of the error component of the message.
+    :var bs_len: the length of the byte stream component of the message.
+    :var msg_type: the type of message to be sent.
+    :var data: the data to be sent in the message.
+    :var bs_consumer: byte stream consumer to recieve data.
+    :var data_stream_cb: a callback that starts byte stream producer.
+    """
     def __init__(self):
         self.deferred = defer.Deferred()
         self.int_info = 0
@@ -109,12 +121,21 @@ class Request(object):
 
 
 class Response(object):
+    """
+    This object contains the information returned from the server.
+
+    :var int_info: the message API number
+    :var err_len: the length of the error component of the message.
+    :var bs_len: the length of the byte stream component of the message.
+    :var msg_type: the type of message to be sent.
+    :var msg_len: the length of the message.
+    """
     def __init__(self):
         self.msg_type = ''
         self.msg_len = 0
         self.err_len = 0
         self.bs_len = 0
-        self.intinfo = 0
+        self.int_info = 0
 
     def getMessageLengths(self):
         return (self.msg_len, self.err_len, self.bs_len)
@@ -214,8 +235,8 @@ class IRODSChannel(Protocol):
 
         self.header_len = self.header_len - len(data[:self.header_len])
 
-        if self.response.intinfo < 0:
-            self.nextDeferred.errback(IRODSGeneralException(self.response.intinfo))
+        if self.response.int_info < 0:
+            self.nextDeferred.errback(IRODSGeneralException(self.response.int_info))
 
 
         return rawdata
@@ -250,22 +271,44 @@ class IRODSChannel(Protocol):
 
 
     def processMessage(self, data):
+        """
+        This function is called once the message header is parsed and the
+        message body has been loaded into a buffer.
+        """
         pass
 
 
     def processError(self, data):
+        """
+        This function is called once the message header is parsed and the
+        error has been loaded into a buffer.
+        """
         pass
 
 
     def processByteStream(self, data):
+        """
+        This function is called as data arrives, until there is no more to
+        be sent.
+        """
         pass
 
 
     def processOther(self, data):
+        """
+        This function is called last and is used to handle data that doesn't
+        fit within the normal constraints of a response.
+
+        To force this to be called again, return True
+        """
         pass
 
 
     def doneProcessing(self):
+        """
+        After all other process functions have finished this function is
+        called to cleanup the state of the protocol.
+        """
         self._processed_header = False
         self._buffer = ''
         log.msg("\nDONE PROCESSING\n")
