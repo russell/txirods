@@ -1,7 +1,6 @@
 #############################################################################
 #
-# Copyright (c) 2010 Victorian Partnership for Advanced Computing Ltd and
-# Contributors.
+# Copyright (c) 2010 Russell Sim <russell.sim@gmail.com> and Contributors.
 # All Rights Reserved.
 #
 # This program is free software: you can redistribute it and/or modify

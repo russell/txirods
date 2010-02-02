@@ -1,7 +1,6 @@
 #############################################################################
 #
-# Copyright (c) 2009 Victorian Partnership for Advanced Computing Ltd and
-# Contributors.
+# Copyright (c) 2010 Russell Sim <russell.sim@gmail.com> and Contributors.
 # All Rights Reserved.
 #
 # This program is free software: you can redistribute it and/or modify
@@ -18,7 +17,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 #############################################################################
-
 
 # 600 - 699 - Object File I/O API calls
 DATA_OBJ_CREATE_AN = 601
