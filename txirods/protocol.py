@@ -444,7 +444,6 @@ class IRODS(IRODSChannel):
                             inx = ['COL_COLL_NAME'],
                             value = [" = '%s'" % path]),
                          maxRows = 500, options = 32, partialStartIndex = 0)
-        print data
         d = self.sendApiReq(int_info=api.GEN_QUERY_AN,
                             data=self.api_request_map[api.GEN_QUERY_AN].build(data))
         d.addBoth(self.sendNextRequest)
