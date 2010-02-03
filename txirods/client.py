@@ -348,9 +348,9 @@ class IRODS(IRODSChannel):
                     proxy_zone='', client_user='', client_zone='', option=''):
         log.msg("\nsendConnect\n", logging.INFO)
         self.connect_info = {'irodsProt':self.api, 'reconnFlag': reconnFlag,
-                             'connectCnt': connectCnt, 'proxy_user':proxy_user,
-                             'proxy_zone': proxy_zone, 'client_user': client_user,
-                             'client_zone': client_zone, 'option': option}
+                             'connectCnt': connectCnt, 'proxyUser':proxy_user,
+                             'proxyRcatZone': proxy_zone, 'clientUser': client_user,
+                             'clientRcatZone': client_zone, 'option': option}
         startup = messages.connect.substitute(self.connect_info)
         d = defer.Deferred()
         d.addCallback(self.finishConnect)
@@ -416,8 +416,8 @@ class IRODS(IRODSChannel):
         # replace and 0 with 1
         resp = resp.replace('\0', '\x01')
 
-        userandzone = self.connect_info['proxy_user'] + '#' \
-                + self.connect_info['proxy_zone']
+        userandzone = self.connect_info['proxyUser'] + '#' \
+                + self.connect_info['proxyRcatZone']
         # pad message with 0
         self.sendMessage(msg_type='RODS_API_REQ',
                          int_info=api.AUTH_RESPONSE_AN,

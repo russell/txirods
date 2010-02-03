@@ -39,19 +39,19 @@ connect = Template("""<StartupPack_PI>
 <irodsProt>$irodsProt</irodsProt>
 <reconnFlag>$reconnFlag</reconnFlag>
 <connectCnt>$connectCnt</connectCnt>
-<proxyUser>$proxy_user</proxyUser>
-<proxyRcatZone>$proxy_zone</proxyRcatZone>
-<clientUser>$client_user</clientUser>
-<clientRcatZone>$client_zone</clientRcatZone>
+<proxyUser>$proxyUser</proxyUser>
+<proxyRcatZone>$proxyRcatZone</proxyRcatZone>
+<clientUser>$clientUser</clientUser>
+<clientRcatZone>$clientRcatZone</clientRcatZone>
 <relVersion>rods2.1</relVersion>
 <apiVersion>d</apiVersion>
 <option>$option</option>
 </StartupPack_PI>\n""")
 
 connect_default = {'irodsProt':0, 'reconnFlag': 0,
-                   'connectCnt': 0, 'proxy_user': '',
-                   'proxy_zone': '', 'client_user': '',
-                   'client_zone': '', 'option': ''}
+                   'connectCnt': 0, 'proxyUser': '',
+                   'proxyRcatZone': '', 'clientUser': '',
+                   'clientRcatZone': '', 'option': ''}
 
 def count(context):
     return context.len
