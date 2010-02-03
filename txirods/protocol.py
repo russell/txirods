@@ -222,10 +222,6 @@ class IRODSChannel(Protocol):
 
         # if we just processed the last part of the header, cleanup and finish
         if self.header_len <= len(data):
-            # XXX Backwards compatability from before i had a response object
-            self.msg_len = self.response.msg_len
-            self.msg_type = self.response.msg_type
-
             self.parser.close()
             self.parser = None
             self._processed_header = True

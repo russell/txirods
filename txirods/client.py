@@ -58,7 +58,7 @@ class IRODS(IRODSChannel):
         """
         log.msg('===========SEND=REQUEST============')
         self.nextDeferred = request.deferred
-        self.int_info = request.int_info
+        self.request = request
 
         if request.bs_consumer:
             self.bytestream_consumer = request.bs_consumer
@@ -418,6 +418,9 @@ class IRODS(IRODSChannel):
 
         userandzone = self.connect_info['proxyUser'] + '#' \
                 + self.connect_info['proxyRcatZone']
+
+        # XXX dodgy setting of request information.
+        self.request.int_info = api.AUTH_RESPONSE_AN
         # pad message with 0
         self.sendMessage(msg_type='RODS_API_REQ',
                          int_info=api.AUTH_RESPONSE_AN,
@@ -439,9 +442,10 @@ class IRODS(IRODSChannel):
         irods message processing
         """
         log.msg("\nPROCESSMESSAGE\n", debug=True)
-        if self.int_info in self.api_reponse_map:
+        if self.response.msg_type == 'RODS_API_REPLY' and \
+                    self.request.int_info in self.api_reponse_map:
             try:
-                data = self.api_reponse_map[self.int_info].parse(data)
+                data = self.api_reponse_map[self.request.int_info].parse(data)
             except:
                 self.nextDeferred.errback(failure.Failure())
             else:
@@ -450,14 +454,14 @@ class IRODS(IRODSChannel):
 
         if self.response.msg_type in self.generic_reponse_map:
             try:
-                data = self.generic_reponse_map[self.msg_type](data)
+                data = self.generic_reponse_map[self.response.msg_type](data)
             except:
                 self.nextDeferred.errback(failure.Failure())
             else:
                 self.nextDeferred.callback(data)
             return
 
-        if self.int_info == api.AUTH_REQUEST_AN:
+        if self.request.int_info == api.AUTH_REQUEST_AN:
             self.handleAuthChallange(data)
             return
 
@@ -472,17 +476,17 @@ class IRODS(IRODSChannel):
 
     def processOther(self, data):
         log.msg("\nPROCESSOTHER\n", debug=True)
-        if self.int_info == api.GSI_AUTH_REQUEST_AN:
+        if self.request.int_info == api.GSI_AUTH_REQUEST_AN:
             self.handleAuthGsi(data, True)
             return True
-        if self.int_info == api.AUTH_RESPONSE_AN:
+        if self.request.int_info == api.AUTH_RESPONSE_AN:
             self.handleAuthChallangeResponse(data)
             return
 
         # handle empty reponse messages
-        if self.int_info in [api.COLL_CREATE_AN,
+        if self.request.int_info in [api.COLL_CREATE_AN,
                              api.DATA_OBJ_PUT_AN,
-                             api.DATA_OBJ_UNLINK_AN]:
+                             api.DATA_OBJ_UNLINK_AN,]:
             if self.response.int_info >= 0:
                 self.nextDeferred.callback('')
             return
