@@ -37,7 +37,7 @@ class IRODSHeaderHandler(ContentHandler):
                        'msgLen': 'msg_len',
                        'errorLen': 'err_len',
                        'bsLen': 'bs_len',
-                       'intInfo': 'intinfo' }
+                       'intInfo': 'int_info' }
         if element_map.has_key(name):
             self.__tag = element_map[name]
 
@@ -47,7 +47,7 @@ class IRODSHeaderHandler(ContentHandler):
 
     def endElement(self, name):
         if self.__tag:
-            if self.__tag in ['msg_len', 'err_len', 'bs_len', 'intinfo']:
+            if self.__tag in ['msg_len', 'err_len', 'bs_len', 'int_info']:
                 setattr(self.headers, self.__tag, int(self.__buffer))
             else:
                 setattr(self.headers, self.__tag, self.__buffer)

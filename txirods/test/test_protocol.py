@@ -45,7 +45,7 @@ class IRODSHeaderParserTestCase(unittest.TestCase):
         self.assertEqual(r.msg_len, 111)
         self.assertEqual(r.err_len, 2)
         self.assertEqual(r.bs_len, 3)
-        self.assertEqual(r.intinfo, 4)
+        self.assertEqual(r.int_info, 4)
 
 
     def test_iter_header_parse(self):
@@ -60,7 +60,7 @@ class IRODSHeaderParserTestCase(unittest.TestCase):
         self.assertEqual(r.msg_len, 111)
         self.assertEqual(r.err_len, 2)
         self.assertEqual(r.bs_len, 3)
-        self.assertEqual(r.intinfo, 4)
+        self.assertEqual(r.int_info, 4)
 
 
 class IRODSProtocolTestCase(unittest.TestCase):
