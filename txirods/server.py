@@ -47,7 +47,7 @@ class IRODSBaseServer(IRODSChannel):
         log.msg("\nPROCESSMESSAGE\n", debug=True)
         if self.response.msg_type in self.generic_reponse_map:
             try:
-                data = self.generic_reponse_map[self.msg_type](data)
+                data = self.generic_reponse_map[self.response.msg_type](data)
             except:
                 self.nextDeferred.errback(failure.Failure())
             else:
