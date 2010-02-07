@@ -72,12 +72,14 @@ class IRODSBaseServer(IRODSChannel):
         log.msg("\nPROCESSOTHER\n", debug=True)
 
         # handle empty reponse messages
-        print self.response.int_info
         if self.response.int_info in [api.AUTH_REQUEST_AN,]:
             if hasattr(self, 'msg_' + self.response.msg_type.lower() + '_' + str(self.response.int_info)):
                 return getattr(self, 'msg_' + self.response.msg_type.lower() + '_' + str(self.response.int_info))(data)
             else:
                 raise Exception("WTF Other Error")
+
+        if self.response.msg_type == 'RODS_DISCONNECT':
+            return self.msg_rods_disconnect(data)
 
 
     def msg_rods_api_req(self, data):
@@ -141,6 +143,11 @@ class IRODSBaseServer(IRODSChannel):
                          'reconnAddr': '', 'cookie': 0}
         response_data = rodsml.version_pi.substitute(response_data)
         self.sendMessage('RODS_VERSION', data=response_data)
+
+
+    def msg_rods_disconnect(self, data):
+        self.transport.loseConnection()
+
 
 class IRODSServerFactory(Factory):
 
