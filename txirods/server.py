@@ -54,12 +54,12 @@ class IRODSBaseServer(IRODSChannel):
                 if hasattr(self, 'msg_' + self.response.msg_type.lower()):
                     return getattr(self, 'msg_' + self.response.msg_type.lower())(data)
                 else:
-                    raise Exception("WTF")
+                    return self.msg_rods_not_supported(data)
 
         if hasattr(self, 'msg_' + self.response.msg_type.lower() + '_' + str(self.response.int_info)):
             return getattr(self, 'msg_' + self.response.msg_type.lower() + '_' + str(self.response.int_info))(data)
         else:
-            raise Exception("WTF Message Erro")
+            return self.msg_rods_not_supported(data)
 
         if self.int_info == api.AUTH_REQUEST_AN:
             self.handleAuthChallange(data)
@@ -124,6 +124,11 @@ class IRODSBaseServer(IRODSChannel):
         self.sendMessage(msg_type='RODS_API_REQ',
                          int_info=api.AUTH_RESPONSE_AN,
                          data=resp + userandzone + '\0')
+
+
+    def msg_rods_not_supported(self, data):
+        """call this if the server doesn't implement a proper response"""
+        self.sendMessage(msg_type='RODS_API_REPLY', int_info=-66000)
 
 
     def msg_rods_connect(self, data):
