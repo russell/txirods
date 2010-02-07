@@ -19,6 +19,7 @@
 #############################################################################
 
 from twisted.internet import reactor, defer
+from twisted.internet.protocol import ClientFactory
 from twisted.python import log, failure
 from txirods.encoding import binary as messages
 from txirods import api
@@ -495,4 +496,24 @@ class IRODS(IRODSChannel):
 class IRODSClient(IRODS):
     def connectionLost(self, *a):
         self.nextDeferred.callback('Connection closed by remote host.')
+
+
+class IRODSClientFactory(ClientFactory):
+
+    protocol = IRODSClient
+
+    def __init__(self, cb_connected, cb_connection_lost):
+        self.cb_connected = cb_connected
+        self.cb_connection_lost = cb_connection_lost
+
+    def buildProtocol(self, addr):
+        protocol = ClientFactory.buildProtocol(self, addr)
+        reactor.callLater(0, self.cb_connected.callback, protocol)
+        return protocol
+
+    def clientConnectionFailed(self, connector, reason):
+        reactor.callLater(0, self.cb_connected.errback, reason)
+
+    def clientConnectionLost(self, connector, reason):
+        reactor.callLater(0, self.cb_connection_lost.callback, reason)
 
