@@ -89,6 +89,16 @@ class IRODSClientController(object):
     def connectClient(self, client):
         self.client = client
 
+    def parseSqlResult(data):
+        if not data: return {}
+        new_data = []
+        for col in data.sqlResult:
+            for r in range(data.rowCnt):
+                if len(new_data) < data.rowCnt:
+                    new_data.append({})
+                new_data[r][col.const] = col.value[r]
+        return new_data
+
     def printStacktrace(self, error):
         No_Results = -808000
         if error.value.errorNumber == -808000:
