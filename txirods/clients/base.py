@@ -1,7 +1,6 @@
 #############################################################################
 #
-# Copyright (c) 2010 Russell Sim <russell.sim@gmail.com> and
-# Contributors.
+# Copyright (c) 2010 Russell Sim <russell.sim@gmail.com> and Contributors.
 # All Rights Reserved.
 #
 # This program is free software: you can redistribute it and/or modify
@@ -89,12 +88,6 @@ class IRODSClientController(object):
 
     def connectClient(self, client):
         self.client = client
-        self.sendConnect()
-
-    def print_data(self, data):
-        pwd = self.config.irodsCwd
-        print pwd
-        return data
 
     def printStacktrace(self, error):
         No_Results = -808000
@@ -102,25 +95,6 @@ class IRODSClientController(object):
             # SQL No Results
             return None
         return error
-
-    def sendConnect(self):
-        user = self.config.irodsUserName
-        zone = self.config.irodsZone
-        d = self.client.sendConnect(proxy_user=user, proxy_zone=zone,
-                                    client_zone=zone, client_user=user)
-        d.addCallbacks(self.sendAuth, self.printStacktrace)
-        d.addErrback(self.sendDisconnect)
-
-    def sendAuth(self, data):
-        d = self.client.sendAuthChallenge(self.credentials.password)
-        d.addCallbacks(self.sendPwd, self.sendDisconnect)
-
-    def sendPwd(self, data):
-        pwd = self.config.irodsCwd
-        d = self.client.objStat(pwd)
-        d.addCallbacks(self.print_data, self.printStacktrace)
-        self.sendDisconnect(data)
-        return data
 
     def sendDisconnect(self, data):
         d = self.client.sendDisconnect()

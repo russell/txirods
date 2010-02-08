@@ -24,7 +24,7 @@ from twisted.internet import reactor, defer
 class PwdController(IRODSClientController):
 
     def connectClient(self, client):
-        self.client = client
+        IRODSClientController.connectClient(self, client)
         self.sendConnect()
 
     def printResult(self, data):
@@ -53,7 +53,7 @@ class PwdController(IRODSClientController):
 
 
 def main(*args):
-    controller = IRODSClientController(reactor)
+    controller = PwdController(reactor)
 
     reactor.run()
     return
