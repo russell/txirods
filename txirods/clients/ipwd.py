@@ -21,6 +21,7 @@
 from txirods.clients.base import IRODSClientController
 from twisted.internet import reactor, defer
 
+
 class PwdController(IRODSClientController):
 
     def connectClient(self, client):
@@ -57,4 +58,3 @@ def main(*args):
 
     reactor.run()
     return
-
