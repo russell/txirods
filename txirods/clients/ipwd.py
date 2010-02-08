@@ -20,84 +20,127 @@
 
 import sys
 import logging
+import optparse
 
 from twisted.python import log
-from txirods.client import IRODSClient
+from txirods.client import IRODSClientFactory
 from txirods.config import ConfigParser, AuthParser
-from twisted.internet import reactor
-from twisted.internet.protocol import ClientCreator
-
-
-def print_st(error):
-    No_Results = -808000
-    if error.value.errorNumber == -808000:
-        # SQL No Results
-        return None
-    return error
+from twisted.internet import reactor, defer
+from twisted.internet import error
 
 
 def main(*args):
-    # Late import, in case this project becomes a library, never to be run as main again.
-    import optparse
+    class IRODSClientController(object):
 
-    # Populate our options, -h/--help is already there for you.
-    optp = optparse.OptionParser()
-    optp.add_option('-v', '--verbose', dest='verbose', action='count',
-                    help="Increase verbosity (specify multiple times for more)")
-    optp.add_option("-V", "--version", action='store_true',
-                    help="print version number and exit")
-    # Parse the arguments (defaults to parsing sys.argv).
-    opts, args = optp.parse_args()
+        factory = IRODSClientFactory
 
-    # Here would be a good place to check what came in on the command line and
-    # call optp.error("Useful message") to exit if all it not well.
-    c = ConfigParser()
-    c.read()
-    pwd = c.irodsCwd
-    user = c.irodsUserName
-    zone = c.irodsZone
+        def __init__(self, reactor):
+            self.reactor = reactor
+            self.client = None
+            self.host = 'localhost'
+            self.port = 1247
 
-    a = AuthParser()
-    a.read()
+            optp = optparse.OptionParser()
+            # Parse the arguments (defaults to parsing sys.argv).
+            self.parseArguments(optp)
+            opts, args = optp.parse_args()
 
-    log_level = logging.WARNING # default
-    if opts.verbose == 1:
-        log_level = logging.INFO
-    elif opts.verbose >= 2:
-        log_level = logging.DEBUG
-        log.startLogging(sys.stdout)
+            self.parseConfig()
 
-    # Set up basic configuration, out to stderr with a reasonable default format.
-    logging.basicConfig(level=log_level)
+            self.configure(opts, args)
+            self.connectTCP()
 
-    def success(response):
-        print pwd
+        def parseArguments(self, optp):
+            optp.add_option('-v', '--verbose', dest='verbose', action='count',
+                            help="Increase verbosity (specify multiple times for more)")
+            optp.add_option("-V", "--version", action='store_true',
+                            help="print version number and exit")
 
-    def connectionFailed(f):
-        print "Connection Failed:", f
-        reactor.stop()
+        def parseConfig(self):
+            c = ConfigParser()
+            c.read()
+            self.pwd = c.irodsCwd
+            self.user = c.irodsUserName
+            self.zone = c.irodsZone
+            self.config = c
 
-    def connectionMade(irodsClient):
-        d = irodsClient.sendConnect(proxy_user=user, proxy_zone=zone, client_zone=zone, client_user=user)
-        d.addErrback(print_st)
+            self.credentials = AuthParser()
+            self.credentials.read()
 
-        def successfullyAuthed(data):
-            d = irodsClient.objStat(pwd)
-            d.addCallbacks(success, print_st)
+        def configure(self, opts, args):
+            # Here would be a good place to check what came in on the command line and
+            # call optp.error("Useful message") to exit if all it not well.
+            log_level = logging.WARNING # default
+            if opts.verbose == 1:
+                log_level = logging.INFO
+            elif opts.verbose >= 2:
+                log_level = logging.DEBUG
+                log.startLogging(sys.stdout)
 
-            disconnect(data)
+            # Set up basic configuration, out to stderr with a reasonable default format.
+            logging.basicConfig(level=log_level)
+
+
+        def connectTCP(self):
+            cb_connect = defer.Deferred()
+            cb_connect.addCallbacks(self.connectClient, self.connectionFailed)
+
+            cb_connection_lost = defer.Deferred()
+            cb_connection_lost.addBoth(self.connectionLost)
+
+            factory = self.factory(cb_connect, cb_connection_lost)
+            self.reactor.connectTCP(self.host, self.port, factory)
+
+        def connectClient(self, client):
+            self.client = client
+            self.sendConnect()
+
+        def print_data(self, data):
+            pwd = self.config.irodsCwd
+            print pwd
             return data
 
-        def disconnect(data):
-            d = irodsClient.sendDisconnect()
-            d.addCallback(lambda result: reactor.stop())
+        def printStacktrace(self, error):
+            No_Results = -808000
+            if error.value.errorNumber == -808000:
+                # SQL No Results
+                return None
+            return error
+
+        def sendConnect(self):
+            user = self.config.irodsUserName
+            zone = self.config.irodsZone
+            d = self.client.sendConnect(proxy_user=user, proxy_zone=zone,
+                                        client_zone=zone, client_user=user)
+            d.addCallbacks(self.requestauth, self.printStacktrace)
+            d.addErrback(self.disconnect)
+
+        def requestauth(self, data):
+            d = self.client.sendAuthChallenge(self.credentials.password)
+            d.addCallbacks(self.requestPwd, self.disconnect)
+
+        def requestPwd(self, data):
+            d = self.client.objStat(self.pwd)
+            d.addCallbacks(self.print_data, self.printStacktrace)
+            self.disconnect(data)
             return data
 
-        d = irodsClient.sendAuthChallenge(a.password)
-        d.addCallbacks(successfullyAuthed, disconnect)
+        def disconnect(self, data):
+            d = self.client.sendDisconnect()
+            return data
 
-    creator = ClientCreator(reactor, IRODSClient)
-    creator.connectTCP('localhost', 1247).addCallback(connectionMade).addErrback(connectionFailed)
+        def connectionLost(self, reason):
+            reason.trap(error.ConnectionDone)
+            if not reason:
+                print "Connection Lost:", reason
+            reactor.stop()
+
+        def connectionFailed(self, f):
+            print "Connection Failed:", f
+            reactor.stop()
+
+    controller = IRODSClientController(reactor)
+
     reactor.run()
     return
 
