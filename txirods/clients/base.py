@@ -89,7 +89,7 @@ class IRODSClientController(object):
     def connectClient(self, client):
         self.client = client
 
-    def parseSqlResult(data):
+    def parseSqlResult(self, data):
         if not data: return {}
         new_data = []
         for col in data.sqlResult:
