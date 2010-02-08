@@ -37,8 +37,6 @@ def main(*args):
         def __init__(self, reactor):
             self.reactor = reactor
             self.client = None
-            self.host = 'localhost'
-            self.port = 1247
 
             optp = optparse.OptionParser()
             # Parse the arguments (defaults to parsing sys.argv).
@@ -57,12 +55,8 @@ def main(*args):
                             help="print version number and exit")
 
         def parseConfig(self):
-            c = ConfigParser()
-            c.read()
-            self.pwd = c.irodsCwd
-            self.user = c.irodsUserName
-            self.zone = c.irodsZone
-            self.config = c
+            self.config = ConfigParser()
+            self.config.read()
 
             self.credentials = AuthParser()
             self.credentials.read()
@@ -89,7 +83,10 @@ def main(*args):
             cb_connection_lost.addBoth(self.connectionLost)
 
             factory = self.factory(cb_connect, cb_connection_lost)
-            self.reactor.connectTCP(self.host, self.port, factory)
+
+            host = self.config.irodsHost
+            port = self.config.irodsPort
+            self.reactor.connectTCP(host, port, factory)
 
         def connectClient(self, client):
             self.client = client
@@ -112,20 +109,21 @@ def main(*args):
             zone = self.config.irodsZone
             d = self.client.sendConnect(proxy_user=user, proxy_zone=zone,
                                         client_zone=zone, client_user=user)
-            d.addCallbacks(self.requestauth, self.printStacktrace)
-            d.addErrback(self.disconnect)
+            d.addCallbacks(self.sendAuth, self.printStacktrace)
+            d.addErrback(self.sendDisconnect)
 
-        def requestauth(self, data):
+        def sendAuth(self, data):
             d = self.client.sendAuthChallenge(self.credentials.password)
-            d.addCallbacks(self.requestPwd, self.disconnect)
+            d.addCallbacks(self.sendPwd, self.sendDisconnect)
 
-        def requestPwd(self, data):
-            d = self.client.objStat(self.pwd)
+        def sendPwd(self, data):
+            pwd = self.config.irodsCwd
+            d = self.client.objStat(pwd)
             d.addCallbacks(self.print_data, self.printStacktrace)
-            self.disconnect(data)
+            self.sendDisconnect(data)
             return data
 
-        def disconnect(self, data):
+        def sendDisconnect(self, data):
             d = self.client.sendDisconnect()
             return data
 
@@ -135,8 +133,8 @@ def main(*args):
                 print "Connection Lost:", reason
             reactor.stop()
 
-        def connectionFailed(self, f):
-            print "Connection Failed:", f
+        def connectionFailed(self, reason):
+            print "Connection Failed:", reason
             reactor.stop()
 
     controller = IRODSClientController(reactor)
