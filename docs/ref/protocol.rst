@@ -7,6 +7,13 @@
 .. moduleauthor:: Russell Sim <russell.sim@gmail.com>
 
 
+:class:`FileRecever` Objects
+------------------------
+.. autoclass:: FileRecever
+   :members:
+   :undoc-members:
+
+
 :class:`Request` Objects
 ------------------------
 .. autoclass:: Request
