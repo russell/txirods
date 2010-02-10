@@ -29,14 +29,41 @@ dotirodsA = path.join(dotirodsdir, ".irodsA")
 class ConfigParser(object):
     """
     A really simple irods config parser
+
+    :var irodsHost: the iRODS host
+    :var irodsPort: the iRODS port
+    :var irodsDefResource: the default resource
+    :var irodsHome: the users home directory
+    :var irodsCwd: the current working directory
+    :var irodsUserName: the user name
+    :var irodsZone: the users home zone
     """
+    def __init__(self):
+        self.irodsHost = ''
+        self.irodsPort = 0
+        self.irodsDefResource = ''
+        self.irodsHome = ''
+        self.irodsCwd = ''
+        self.irodsUserName = ''
+        self.irodsZone = ''
+
     def read(self):
+        """
+        read the iRODS Env file
+        """
         o = open(dotirodsEnv)
         self.parse(o)
         o.close()
 
-    def parse(self, string):
-        for l in string:
+    def parse(self, lines):
+        """
+        parse the lines from the iRODS Env file and store the values
+        as attributes.
+
+        :param lines: the lines from the iRODS Env file.
+        :type lines: List of Str
+        """
+        for l in lines:
             # skip comments
             if l.startswith('#'):
                 continue
@@ -52,17 +79,27 @@ class ConfigParser(object):
                 setattr(self, items[0].strip(), items[1])
 
     def write(self):
+        """
+        write the iRODS Env file
+        """
         o = open(dotirodsEnv, 'r+')
         out = self.generate(o)
         o.seek(0)
         o.writelines(out)
         o.close()
 
-    def generate(self, string):
+    def generate(self, lines):
+        """
+        generate a config file based on the origional config file
+
+        :param lines: the lines from the iRODS Env file.
+        :type lines: List of Str
+        :rtype: List of Str
+        """
         out = []
         to_write = ['irodsHost', 'irodsDefResource', 'irodsHome',
                     'irodsCwd', 'irodsUserName', 'irodsZone', 'irodsPort']
-        for l in string:
+        for l in lines:
             ignore = True
             for t in to_write:
                 if l.startswith(t):
@@ -86,6 +123,7 @@ class AuthParser(object):
     """
     def __init__(self):
         self.password = ''
+
     def read(self):
         o = open(dotirodsA)
         self.parse(o.readlines()[0])
