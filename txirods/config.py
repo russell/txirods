@@ -125,14 +125,26 @@ class AuthParser(object):
         self.password = ''
 
     def read(self):
+        """
+        read the iRODS .irodsA file
+        """
         o = open(dotirodsA)
         self.parse(o.readlines()[0])
         o.close()
 
-    def parse(self, password):
-        self.password = password
+    def parse(self, line):
+        """
+        parse the iRODS .irodsA file contents
+
+        :param line: the line from the iRODS Env file.
+        :type line: Str
+        """
+        self.password = line
 
     def write(self):
+        """
+        write the iRODS .irodsA file
+        """
         o = open(dotirodsA, 'w')
         o.write(self.password)
         o.close()
