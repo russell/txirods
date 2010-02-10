@@ -36,5 +36,6 @@ setup(name='txIRODS',
       imkdir = txirods.clients.imkdir:main
       irmdir = txirods.clients.irmdir:main
       irm = txirods.clients.irm:main
+      imiscsrvinfo = txirods.clients.imiscsrvinfo:main
       """,
       )
