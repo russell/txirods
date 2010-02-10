@@ -25,8 +25,7 @@ from txirods import config
 
 class ConfigParserTestCase(unittest.TestCase):
 
-    def test_parse(self):
-        config_file = """# iRODS personal configuration file.
+    config_file = """# iRODS personal configuration file.
 #
 # This file was automatically created during iRODS installation.
 #   Created Sun Jan 24 10:05:17 2010
@@ -47,8 +46,9 @@ irodsUserName 'rods'
 # Zone:
 irodsZone 'tempZone'
 """
+    def test_parse(self):
         c = config.ConfigParser()
-        cfg = StringIO(config_file)
+        cfg = StringIO(self.config_file)
         c.parse(cfg)
         self.assertEqual(c.irodsHost, 'ginger')
         self.assertEqual(c.irodsPort, 1247)
@@ -57,5 +57,25 @@ irodsZone 'tempZone'
         self.assertEqual(c.irodsCwd, '/tempZone/home/rods')
         self.assertEqual(c.irodsUserName, 'rods')
         self.assertEqual(c.irodsZone, 'tempZone')
+
+
+
+    def test_write(self):
+        c = config.ConfigParser()
+        cfg = StringIO(self.config_file)
+        c.parse(cfg)
+        self.assertEqual(c.irodsHost, 'ginger')
+        self.assertEqual(c.irodsPort, 1247)
+        self.assertEqual(c.irodsDefResource, 'demoResc')
+        self.assertEqual(c.irodsHome, '/tempZone/home/rods')
+        self.assertEqual(c.irodsCwd, '/tempZone/home/rods')
+        self.assertEqual(c.irodsUserName, 'rods')
+        self.assertEqual(c.irodsZone, 'tempZone')
+        cfg.seek(0)
+        c.irodsHost = 'localhost'
+        c.generate(cfg)
+        cfg.seek(0)
+        new_cfg = ['# iRODS personal configuration file.\n', '#\n', '# This file was automatically created during iRODS installation.\n', '#   Created Sun Jan 24 10:05:17 2010\n', '#\n', '# iRODS server host name:\n', "irodsHost 'ginger'\n", '# iRODS server port number:\n', 'irodsPort 1247\n', '\n', '# Default storage resource name:\n', "irodsDefResource 'demoResc'\n", '# Home directory in iRODS:\n', "irodsHome '/tempZone/home/rods'\n", '# Current directory in iRODS:\n', "irodsCwd '/tempZone/home/rods'\n", '# Account name:\n', "irodsUserName 'rods'\n", '# Zone:\n', "irodsZone 'tempZone'\n"]
+        self.assertEqual(cfg.readlines(), new_cfg)
 
 

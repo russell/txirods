@@ -19,6 +19,7 @@
 #############################################################################
 
 from twisted.internet import reactor, defer
+from twisted.internet.protocol import ClientFactory
 from twisted.python import log, failure
 from txirods.encoding import binary as messages
 from txirods import api
@@ -58,7 +59,7 @@ class IRODS(IRODSChannel):
         """
         log.msg('===========SEND=REQUEST============')
         self.nextDeferred = request.deferred
-        self.int_info = request.int_info
+        self.request = request
 
         if request.bs_consumer:
             self.bytestream_consumer = request.bs_consumer
@@ -348,9 +349,9 @@ class IRODS(IRODSChannel):
                     proxy_zone='', client_user='', client_zone='', option=''):
         log.msg("\nsendConnect\n", logging.INFO)
         self.connect_info = {'irodsProt':self.api, 'reconnFlag': reconnFlag,
-                             'connectCnt': connectCnt, 'proxy_user':proxy_user,
-                             'proxy_zone': proxy_zone, 'client_user': client_user,
-                             'client_zone': client_zone, 'option': option}
+                             'connectCnt': connectCnt, 'proxyUser':proxy_user,
+                             'proxyRcatZone': proxy_zone, 'clientUser': client_user,
+                             'clientRcatZone': client_zone, 'option': option}
         startup = messages.connect.substitute(self.connect_info)
         d = defer.Deferred()
         d.addCallback(self.finishConnect)
@@ -416,8 +417,11 @@ class IRODS(IRODSChannel):
         # replace and 0 with 1
         resp = resp.replace('\0', '\x01')
 
-        userandzone = self.connect_info['proxy_user'] + '#' \
-                + self.connect_info['proxy_zone']
+        userandzone = self.connect_info['proxyUser'] + '#' \
+                + self.connect_info['proxyRcatZone']
+
+        # XXX dodgy setting of request information.
+        self.request.int_info = api.AUTH_RESPONSE_AN
         # pad message with 0
         self.sendMessage(msg_type='RODS_API_REQ',
                          int_info=api.AUTH_RESPONSE_AN,
@@ -439,9 +443,10 @@ class IRODS(IRODSChannel):
         irods message processing
         """
         log.msg("\nPROCESSMESSAGE\n", debug=True)
-        if self.int_info in self.api_reponse_map:
+        if self.response.msg_type == 'RODS_API_REPLY' and \
+                    self.request.int_info in self.api_reponse_map:
             try:
-                data = self.api_reponse_map[self.int_info].parse(data)
+                data = self.api_reponse_map[self.request.int_info].parse(data)
             except:
                 self.nextDeferred.errback(failure.Failure())
             else:
@@ -450,14 +455,14 @@ class IRODS(IRODSChannel):
 
         if self.response.msg_type in self.generic_reponse_map:
             try:
-                data = self.generic_reponse_map[self.msg_type](data)
+                data = self.generic_reponse_map[self.response.msg_type](data)
             except:
                 self.nextDeferred.errback(failure.Failure())
             else:
                 self.nextDeferred.callback(data)
             return
 
-        if self.int_info == api.AUTH_REQUEST_AN:
+        if self.request.int_info == api.AUTH_REQUEST_AN:
             self.handleAuthChallange(data)
             return
 
@@ -472,17 +477,17 @@ class IRODS(IRODSChannel):
 
     def processOther(self, data):
         log.msg("\nPROCESSOTHER\n", debug=True)
-        if self.int_info == api.GSI_AUTH_REQUEST_AN:
+        if self.request.int_info == api.GSI_AUTH_REQUEST_AN:
             self.handleAuthGsi(data, True)
             return True
-        if self.int_info == api.AUTH_RESPONSE_AN:
+        if self.request.int_info == api.AUTH_RESPONSE_AN:
             self.handleAuthChallangeResponse(data)
             return
 
         # handle empty reponse messages
-        if self.int_info in [api.COLL_CREATE_AN,
+        if self.request.int_info in [api.COLL_CREATE_AN,
                              api.DATA_OBJ_PUT_AN,
-                             api.DATA_OBJ_UNLINK_AN]:
+                             api.DATA_OBJ_UNLINK_AN,]:
             if self.response.int_info >= 0:
                 self.nextDeferred.callback('')
             return
@@ -491,4 +496,24 @@ class IRODS(IRODSChannel):
 class IRODSClient(IRODS):
     def connectionLost(self, *a):
         self.nextDeferred.callback('Connection closed by remote host.')
+
+
+class IRODSClientFactory(ClientFactory):
+
+    protocol = IRODSClient
+
+    def __init__(self, cb_connected, cb_connection_lost):
+        self.cb_connected = cb_connected
+        self.cb_connection_lost = cb_connection_lost
+
+    def buildProtocol(self, addr):
+        protocol = ClientFactory.buildProtocol(self, addr)
+        reactor.callLater(0, self.cb_connected.callback, protocol)
+        return protocol
+
+    def clientConnectionFailed(self, connector, reason):
+        reactor.callLater(0, self.cb_connected.errback, reason)
+
+    def clientConnectionLost(self, connector, reason):
+        reactor.callLater(0, self.cb_connection_lost.callback, reason)
 

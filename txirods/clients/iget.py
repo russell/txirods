@@ -18,97 +18,55 @@
 #
 #############################################################################
 
-import sys
-import logging
 import os
 from os import path
 
-from twisted.python import log
-from twisted.internet import reactor
-from twisted.internet.protocol import ClientCreator
+from twisted.internet import reactor, defer
 
-from txirods.client import IRODSClient
+from txirods.clients.base import IRODSClientController
 from txirods.protocol import FileRecever
-from txirods.config import ConfigParser, AuthParser
 
 
-def print_st(error):
-    No_Results = -808000
-    if error.value.errorNumber == -808000:
-        # SQL No Results
-        return None
-    return error
+class GetController(IRODSClientController):
+
+    def configure(self, opts, args):
+        IRODSClientController.configure(self, opts, args)
+        pwd = self.config.irodsCwd
+        self.localfile = path.join(os.getcwd(), args[0])
+        self.remotefile = path.join(pwd, args[0])
+
+    def connectClient(self, client):
+        IRODSClientController.connectClient(self, client)
+        self.sendConnect()
+
+    def sendConnect(self):
+        user = self.config.irodsUserName
+        zone = self.config.irodsZone
+        d = self.client.sendConnect(proxy_user=user, proxy_zone=zone,
+                                    client_zone=zone, client_user=user)
+        d.addCallbacks(self.sendAuth, self.printStacktrace)
+        d.addErrback(self.sendDisconnect)
+
+    def sendAuth(self, data):
+        d = self.client.sendAuthChallenge(self.credentials.password)
+        d.addCallbacks(self.sendStat, self.sendDisconnect)
+
+    def sendStat(self, data):
+        d = self.client.objStat(self.remotefile)
+        d.addCallbacks(self.sendGet, self.printStacktrace)
+        d.addErrback(self.sendDisconnect)
+        return data
+
+    def sendGet(self, data):
+        f = FileRecever(self.localfile)
+        d = self.client.get(f, self.remotefile, data.objSize)
+        d.addErrback(self.printStacktrace)
+        self.sendDisconnect(data)
+        return data
 
 
 def main(*args):
-    # Late import, in case this project becomes a library, never to be run as main again.
-    import optparse
+    controller = GetController(reactor)
 
-    # Populate our options, -h/--help is already there for you.
-    optp = optparse.OptionParser()
-    optp.add_option('-v', '--verbose', dest='verbose', action='count',
-                    help="Increase verbosity (specify multiple times for more)")
-    optp.add_option("-V", "--version", action='store_true',
-                    help="print version number and exit")
-    # Parse the arguments (defaults to parsing sys.argv).
-    opts, args = optp.parse_args()
-
-    # Here would be a good place to check what came in on the command line and
-    # call optp.error("Useful message") to exit if all it not well.
-    c = ConfigParser()
-    c.read()
-    pwd = c.irodsCwd
-    user = c.irodsUserName
-    zone = c.irodsZone
-
-    a = AuthParser()
-    a.read()
-
-    log_level = logging.WARNING # default
-    if opts.verbose == 1:
-        log_level = logging.INFO
-    elif opts.verbose >= 2:
-        log_level = logging.DEBUG
-        log.startLogging(sys.stdout)
-
-    # Set up basic configuration, out to stderr with a reasonable default format.
-    logging.basicConfig(level=log_level)
-
-    def connectionFailed(f):
-        print "Connection Failed:", f
-        reactor.stop()
-
-    def connectionMade(irodsClient):
-        d = irodsClient.sendConnect(proxy_user=user, proxy_zone=zone, client_zone=zone, client_user=user)
-        d.addErrback(print_st)
-
-        def successfullyAuthed(data):
-            remotefile = path.join(pwd, args[0])
-            d = irodsClient.objStat(remotefile)
-            d.addCallback(exists)
-            d.addErrback(disconnect)
-            return data
-
-        def exists(data):
-            localfile = path.join(os.getcwd(), args[0] + '111')
-            remotefile = path.join(pwd, args[0])
-            f = FileRecever(localfile)
-            d = irodsClient.get(f, remotefile, data.objSize)
-            d.addErrback(print_st)
-            return disconnect(data)
-
-        def disconnect(data):
-            d = irodsClient.sendDisconnect()
-            d.addCallback(lambda result: reactor.stop())
-            return data
-
-        d = irodsClient.sendAuthChallenge(a.password)
-        d.addCallbacks(successfullyAuthed, disconnect)
-
-    creator = ClientCreator(reactor, IRODSClient)
-    creator.connectTCP('localhost', 1247).addCallback(connectionMade).addErrback(connectionFailed)
     reactor.run()
     return
-
-
-

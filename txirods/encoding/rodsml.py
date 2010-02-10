@@ -18,6 +18,7 @@
 #
 #############################################################################
 
+from string import Template
 from xml.sax import make_parser
 from xml.sax.handler import ContentHandler
 
@@ -57,4 +58,14 @@ def SimpleXMLParser(data):
     parser.setContentHandler(handler)
     parser.feed(data)
     return handler.data
+
+
+version_pi = Template("""<Version_PI>
+<status>$status</status>
+<relVersion>$relVersion</relVersion>
+<apiVersion>$apiVersion</apiVersion>
+<reconnPort>$reconnPort</reconnPort>
+<reconnAddr>$reconnAddr</reconnAddr>
+<cookie>$cookie</cookie>
+</Version_PI>\n""")
 

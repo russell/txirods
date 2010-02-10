@@ -58,23 +58,23 @@ class BinaryMessageTestCase(unittest.TestCase):
         coll_parsed = binary.collInp.parse(coll_marshalled)
         coll_unmarshalled = Container(collName = '/tempZone/home/rods/test8', flags = 0, keyValPair = Container(keyWords = ['recursiveOpr'], len = 1, values = ['']), oprType = 0)
 
-        self.assertTrue(coll_parsed == coll_unmarshalled)
+        self.assertEqual(coll_parsed, coll_unmarshalled)
 
         coll_generated = binary.collInp.build(coll_unmarshalled)
 
-        self.assertTrue(coll_generated == coll_marshalled)
+        self.assertEqual(coll_generated, coll_marshalled)
 
 
     def testGenQueryInpMarshall(self):
         genquery_marshalled = "\x00\x00\x01\xf4\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00 \x00\x00\x00\x00%@#ANULLSTR$%\x00%@#ANULLSTR$%\x00\x00\x00\x00\x07\x00\x00\x01\xf5\x00\x00\x01\x93\x00\x00\x01\x91\x00\x00\x01\xa5\x00\x00\x01\x97\x00\x00\x01\xa4\x00\x00\x01\xa3\x00\x00\x00\x01\x00\x00\x00\x01\x00\x00\x00\x01\x00\x00\x00\x01\x00\x00\x00\x01\x00\x00\x00\x01\x00\x00\x00\x01\x00\x00\x00\x01\x00\x00\x01\xf5 = '/ARCS/home/russell.sim'\x00"
         genquery_parsed = binary.genQueryInp.parse(genquery_marshalled)
-        genquery_unmarshalled = Container(continueInx = 0, inxIvalPair = Container(inx = [501, 403, 401, 421, 407, 420, 419], len = 7, value = [1, 1, 1, 1, 1, 1, 1]), inxValPair = Container(inx = [501], len = 1, value = [" = '/ARCS/home/russell.sim'"]), keyValPair = Container(keyWords = None, len = 0, values = None), maxRows = 500, options = 32, partialStartIndex = 0)
+        genquery_unmarshalled = Container(continueInx = 0, inxIvalPair = Container(inx = ['COL_COLL_NAME', 'COL_DATA_NAME', 'COL_D_DATA_ID', 'COL_DATA_MODE', 'COL_DATA_SIZE', 'COL_D_MODIFY_TIME', 'COL_D_CREATE_TIME'], len = 7, value = [1, 1, 1, 1, 1, 1, 1]), inxValPair = Container(inx = ['COL_COLL_NAME'], len = 1, value = [" = '/ARCS/home/russell.sim'"]), keyValPair = Container(keyWords = None, len = 0, values = None), maxRows = 500, options = 32, partialStartIndex = 0)
 
-        self.assertTrue(genquery_parsed == genquery_unmarshalled)
+        self.assertEqual(genquery_parsed, genquery_unmarshalled)
 
         genquery_generated = binary.genQueryInp.build(genquery_unmarshalled)
 
-        self.assertTrue(genquery_generated == genquery_marshalled)
+        self.assertEqual(genquery_generated, genquery_marshalled)
 
 
     def testDataObjInpMarshall(self):
@@ -92,11 +92,11 @@ class BinaryMessageTestCase(unittest.TestCase):
                          oprType = 0,
                          specColl = None)
 
-        self.assertTrue(dataobjinp_parsed == dataobjinp_unmarshalled)
+        self.assertEqual(dataobjinp_parsed, dataobjinp_unmarshalled)
 
         dataobjinp_generated = binary.dataObjInp.build(dataobjinp_unmarshalled)
 
-        self.assertTrue(dataobjinp_generated == dataobjinp_marshalled)
+        self.assertEqual(dataobjinp_generated, dataobjinp_marshalled)
 
 
     def testGenQueryOutMarshall(self):
@@ -149,12 +149,12 @@ class BinaryMessageTestCase(unittest.TestCase):
                                                                              ''])],
                                              totalRowCount = 0)
 
-        self.assertTrue(genqueryout_parsed == genqueryout_unmarshalled)
+        self.assertEqual(genqueryout_parsed, genqueryout_unmarshalled)
 
         genqueryout_generated = binary.genQueryOut.build(genqueryout_unmarshalled)
 
         # TODO Currently broken because it doesn't pad with ANULLSTR
-        #self.assertTrue(genqueryout_generated == genqueryout_marshalled)
+        #self.assertEqual(genqueryout_generated, genqueryout_marshalled)
 
 
 

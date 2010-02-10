@@ -25,7 +25,8 @@ from txirods.encoding.binary import collInp, genQueryInp, dataObjInp
 from txirods.encoding.rodsml import SimpleXMLParser
 
 rods2_1_generic = {
-    'RODS_VERSION': SimpleXMLParser
+    'RODS_CONNECT': SimpleXMLParser,
+    'RODS_VERSION': SimpleXMLParser,
 }
 
 rods2_1_binary_inp = {

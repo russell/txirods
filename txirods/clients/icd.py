@@ -18,6 +18,7 @@
 #
 #############################################################################
 
+from os import path
 from getpass import getpass
 
 from twisted.python import log
@@ -27,7 +28,12 @@ from txirods.clients.base import IRODSClientController
 from twisted.internet import reactor, defer
 
 
-class InitController(IRODSClientController):
+class CdController(IRODSClientController):
+
+    def configure(self, opts, args):
+        IRODSClientController.configure(self, opts, args)
+        pwd = self.config.irodsCwd
+        self.new_path = path.normpath(path.join(pwd, args[0]))
 
     def connectClient(self, client):
         IRODSClientController.connectClient(self, client)
@@ -42,18 +48,28 @@ class InitController(IRODSClientController):
         d.addErrback(self.sendDisconnect)
 
     def sendAuth(self, data):
-        self.credentials.password = getpass("Password:")
         d = self.client.sendAuthChallenge(self.credentials.password)
-        d.addCallbacks(self.savePassword, self.sendDisconnect)
+        d.addCallbacks(self.sendStat, self.sendDisconnect)
 
-    def savePassword(self, data):
-        self.credentials.write()
+    def sendStat(self, data):
+        d = self.client.objStat(self.new_path)
+        d.addCallbacks(self.saveCwd, self.printCwd)
+        d.addErrback(self.printStacktrace)
+        d.addErrback(self.sendDisconnect)
+        return data
+
+    def saveCwd(self, data):
+        self.config.irodsCwd = self.new_path
+        self.config.write()
         self.sendDisconnect(data)
         return data
 
+    def printCwd(self, data):
+        print self.new_path
+        return data
 
 def main(*args):
-    controller = InitController(reactor)
+    controller = CdController(reactor)
 
     reactor.run()
     return

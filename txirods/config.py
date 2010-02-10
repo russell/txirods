@@ -51,6 +51,34 @@ class ConfigParser(object):
                     continue
                 setattr(self, items[0].strip(), items[1])
 
+    def write(self):
+        o = open(dotirodsEnv, 'r+')
+        out = self.generate(o)
+        o.seek(0)
+        o.writelines(out)
+        o.close()
+
+    def generate(self, string):
+        out = []
+        to_write = ['irodsHost', 'irodsDefResource', 'irodsHome',
+                    'irodsCwd', 'irodsUserName', 'irodsZone', 'irodsPort']
+        for l in string:
+            ignore = True
+            for t in to_write:
+                if l.startswith(t):
+                    if t == 'irodsPort':
+                        out.append(t + " " + str(getattr(self, t, '')) + "\n")
+                        ignore = False
+                        break
+                    else:
+                        out.append(t + " '" + getattr(self, t, '') + "'\n")
+                        ignore = False
+                        break
+            if ignore:
+                out.append(l)
+            ignore = True
+        return out
+
 
 class AuthParser(object):
     """

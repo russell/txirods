@@ -19,10 +19,6 @@
 #############################################################################
 
 from twisted.trial import unittest
-from twisted.web import server, error
-from twisted.internet import reactor, defer
-from construct import Container
-from txirods import messages
 from txirods import protocol
 from txirods import header
 from twisted.test.proto_helpers import StringTransport
@@ -49,7 +45,7 @@ class IRODSHeaderParserTestCase(unittest.TestCase):
         self.assertEqual(r.msg_len, 111)
         self.assertEqual(r.err_len, 2)
         self.assertEqual(r.bs_len, 3)
-        self.assertEqual(r.intinfo, 4)
+        self.assertEqual(r.int_info, 4)
 
 
     def test_iter_header_parse(self):
@@ -64,7 +60,7 @@ class IRODSHeaderParserTestCase(unittest.TestCase):
         self.assertEqual(r.msg_len, 111)
         self.assertEqual(r.err_len, 2)
         self.assertEqual(r.bs_len, 3)
-        self.assertEqual(r.intinfo, 4)
+        self.assertEqual(r.int_info, 4)
 
 
 class IRODSProtocolTestCase(unittest.TestCase):
@@ -186,5 +182,4 @@ class IRODSProtocolTestCase(unittest.TestCase):
         self.assertEqual(a.response.msg_type, "RODS_VERSION")
         self.assertEqual(a.message_len, 0)
         self.assertEqual(a._processed_header, False)
-
 
