@@ -30,19 +30,6 @@ from xml.sax import make_parser
 
 from txirods.header import IRODSHeaderHandler
 
-class IRODSGeneralException(Exception):
-    def __init__(self, errorNumber):
-        self.errorNumber = errorNumber
-
-    def errorName(self):
-        error_name = 'UNKNOWN'
-        if errors.int_to_const.has_key(self.errorNumber):
-            error_name = errors.int_to_const[self.errorNumber]
-        return error_name
-
-    def __str__(self):
-        return "General iRODS API exception %s: %s" % (self.errorName(), self.errorNumber)
-
 
 class FileRecever(object):
     """
@@ -232,7 +219,7 @@ class IRODSChannel(Protocol):
         self.header_len = self.header_len - len(data[:self.header_len])
 
         if self.response.int_info < 0:
-            self.nextDeferred.errback(IRODSGeneralException(self.response.int_info))
+            self.nextDeferred.errback(errors.int_to_cls[self.response.int_info]())
 
         return rawdata
 

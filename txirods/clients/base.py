@@ -24,6 +24,7 @@ import logging
 from twisted.python import log
 from twisted.internet import defer, error
 
+from txirods import errors
 from txirods.client import IRODSClientFactory
 from txirods.config import ConfigParser, AuthParser
 
@@ -99,12 +100,9 @@ class IRODSClientController(object):
                 new_data[r][col.const] = col.value[r]
         return new_data
 
-    def printStacktrace(self, error):
-        No_Results = -808000
-        if error.value.errorNumber == -808000:
-            # SQL No Results
-            return None
-        return error
+    def printStacktrace(self, failure):
+        failure.trap(errors.CAT_NO_ROWS_FOUND)
+        return None
 
     def sendDisconnect(self, data):
         d = self.client.sendDisconnect()
