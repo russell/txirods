@@ -52,7 +52,7 @@ class ConfigParser(object):
                 setattr(self, items[0].strip(), items[1])
 
     def write(self):
-        o = open(dotirodsEnv, 'rw')
+        o = open(dotirodsEnv, 'r+')
         out = self.generate(o)
         o.seek(0)
         o.writelines(out)
@@ -67,7 +67,7 @@ class ConfigParser(object):
             for t in to_write:
                 if l.startswith(t):
                     if t == 'irodsPort':
-                        out.append(t + " '" + str(getattr(self, t, '')) + "'\n")
+                        out.append(t + " " + str(getattr(self, t, '')) + "\n")
                         ignore = False
                         break
                     else:
