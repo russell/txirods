@@ -102,26 +102,7 @@ class IRODS(IRODSChannel):
         :type path: str
         :rtype: :class:`~twisted.internet.defer.Deferred`
         """
-        data = Container(keyValPair = Container(len = 0,
-                                                keyWords = None,
-                                                values = None),
-                         continueInx = 0,
-                         inxIvalPair = Container(
-                            len = 8,
-                            inx = ['COL_COLL_NAME', 'COL_DATA_NAME',
-                                   'COL_D_DATA_ID', 'COL_D_OWNER_NAME',
-                                   'COL_DATA_MODE', 'COL_DATA_SIZE',
-                                   'COL_D_MODIFY_TIME', 'COL_D_CREATE_TIME'],
-                            value = [1, 1, 1, 1, 1, 1, 1, 1]),
-                         inxValPair = Container(
-                            len = 1,
-                            inx = ['COL_COLL_NAME'],
-                            value = [" = '%s'" % path]),
-                         maxRows = 500, options = 32, partialStartIndex = 0)
-        d = self.sendApiReq(int_info=api.GEN_QUERY_AN,
-                            data=self.api_request_map[api.GEN_QUERY_AN].build(data))
-        d.addBoth(self.sendNextRequest)
-        return d
+        return self.genQuery('COL_COLL_NAME', 'COL_DATA_NAME', 'COL_D_DATA_ID', 'COL_D_OWNER_NAME', 'COL_DATA_MODE', 'COL_DATA_SIZE', 'COL_D_MODIFY_TIME', 'COL_D_CREATE_TIME', COL_COLL_NAME=" = '%s'" % path)
 
 
     def mkcoll(self, path=''):
@@ -178,25 +159,50 @@ class IRODS(IRODSChannel):
         :type path: str
         :rtype: :class:`~twisted.internet.defer.Deferred`
         """
+        return self.genQuery('COL_COLL_NAME',
+                             'COL_COLL_OWNER_NAME',
+                             'COL_COLL_CREATE_TIME',
+                             'COL_COLL_MODIFY_TIME',
+                             'COL_COLL_TYPE',
+                             'COL_COLL_INFO1',
+                             'COL_COLL_INFO2',
+                             COL_COLL_PARENT_NAME = " = '%s'" % path)
+
+
+    def genQuery(self, *select, **where):
+        """
+        list the collections in a collection at path
+
+        :param select: the columns to select from the iCAT.
+        :type select: list of str
+        :param where: keyword arguments the make up the where clause.
+        :type where: str
+        :rtype: :class:`~twisted.internet.defer.Deferred`
+        """
         data = Container(keyValPair = Container(len = 0,
                                                 keyWords = None,
                                                 values = None),
                          continueInx = 0,
                          inxIvalPair = Container(
-                            len = 7,
-                            inx = ['COL_COLL_NAME',
-                                   'COL_COLL_OWNER_NAME',
-                                   'COL_COLL_CREATE_TIME',
-                                   'COL_COLL_MODIFY_TIME',
-                                   'COL_COLL_TYPE',
-                                   'COL_COLL_INFO1',
-                                   'COL_COLL_INFO2'],
-                            value = [1, 1, 1, 1, 1, 1, 1]),
+                            len = 0,
+                            inx = [],
+                            value = []),
                          inxValPair = Container(
-                            len = 1,
-                            inx = ['COL_COLL_PARENT_NAME'],
-                            value = [" = '%s'" % path]),
+                            len = 0,
+                            inx = [],
+                            value = []),
                          maxRows = 500, options = 32, partialStartIndex = 0)
+
+        for s in select:
+            data.inxIvalPair.len = data.inxIvalPair.len + 1
+            data.inxIvalPair.inx.append(s)
+            data.inxIvalPair.value.append(1)
+
+        for k, v in where.items():
+            data.inxValPair.len = data.inxValPair.len + 1
+            data.inxValPair.inx.append(k)
+            data.inxValPair.value.append(v)
+
         d = self.sendApiReq(int_info=api.GEN_QUERY_AN,
                             data=self.api_request_map[api.GEN_QUERY_AN].build(data))
         d.addBoth(self.sendNextRequest)
