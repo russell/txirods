@@ -20,7 +20,7 @@
 #############################################################################
 from string import Template
 from construct import Enum, Struct, CString, SBInt32, UBInt32, UBInt64
-from construct import MetaArray, IfThenElse
+from construct import MetaArray, IfThenElse, Adapter, ConstError
 from construct import MappingAdapter, Pass, Select, Const, Field
 
 from txirods.genquery import const_to_int, int_to_const
@@ -61,14 +61,26 @@ def nulls(context):
         return False
     return True
 
+class ListAdapter(Adapter):
+    def _decode(self, obj, context):
+        if obj == NULL_PTR_PACK_STR:
+            return []
+        raise ConstError("expected %r, found %r" % (NULL_PTR_PACK_STR, obj))
+    def _encode(self, obj, context):
+        if obj == []:
+            return NULL_PTR_PACK_STR
+        raise ConstError("expected %r, found %r" % (repr([]), obj))
+
 
 Null_Pointer = MappingAdapter(Const(Field('null', 14), NULL_PTR_PACK_STR), {NULL_PTR_PACK_STR: None}, {None: NULL_PTR_PACK_STR}, Pass, Pass)
+
+Null_List = ListAdapter(Const(Field('null', 14), NULL_PTR_PACK_STR))
 
 
 keyValPair = Struct('keyValPair',
                     UBInt32('len'),
-                    IfThenElse('keyWords', nulls, MetaArray(count, CString('key')), Null_Pointer),
-                    IfThenElse('values', nulls, MetaArray(count, CString('value')), Null_Pointer)
+                    IfThenElse('keyWords', nulls, MetaArray(count, CString('key')), Null_List),
+                    IfThenElse('values', nulls, MetaArray(count, CString('value')), Null_List)
                    )
 
 

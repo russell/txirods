@@ -68,7 +68,7 @@ class BinaryMessageTestCase(unittest.TestCase):
     def testGenQueryInpMarshall(self):
         genquery_marshalled = "\x00\x00\x01\xf4\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00 \x00\x00\x00\x00%@#ANULLSTR$%\x00%@#ANULLSTR$%\x00\x00\x00\x00\x07\x00\x00\x01\xf5\x00\x00\x01\x93\x00\x00\x01\x91\x00\x00\x01\xa5\x00\x00\x01\x97\x00\x00\x01\xa4\x00\x00\x01\xa3\x00\x00\x00\x01\x00\x00\x00\x01\x00\x00\x00\x01\x00\x00\x00\x01\x00\x00\x00\x01\x00\x00\x00\x01\x00\x00\x00\x01\x00\x00\x00\x01\x00\x00\x01\xf5 = '/ARCS/home/russell.sim'\x00"
         genquery_parsed = binary.genQueryInp.parse(genquery_marshalled)
-        genquery_unmarshalled = Container(continueInx = 0, inxIvalPair = Container(inx = ['COL_COLL_NAME', 'COL_DATA_NAME', 'COL_D_DATA_ID', 'COL_DATA_MODE', 'COL_DATA_SIZE', 'COL_D_MODIFY_TIME', 'COL_D_CREATE_TIME'], len = 7, value = [1, 1, 1, 1, 1, 1, 1]), inxValPair = Container(inx = ['COL_COLL_NAME'], len = 1, value = [" = '/ARCS/home/russell.sim'"]), keyValPair = Container(keyWords = None, len = 0, values = None), maxRows = 500, options = 32, partialStartIndex = 0)
+        genquery_unmarshalled = Container(continueInx = 0, inxIvalPair = Container(inx = ['COL_COLL_NAME', 'COL_DATA_NAME', 'COL_D_DATA_ID', 'COL_DATA_MODE', 'COL_DATA_SIZE', 'COL_D_MODIFY_TIME', 'COL_D_CREATE_TIME'], len = 7, value = [1, 1, 1, 1, 1, 1, 1]), inxValPair = Container(inx = ['COL_COLL_NAME'], len = 1, value = [" = '/ARCS/home/russell.sim'"]), keyValPair = Container(keyWords = [], len = 0, values = []), maxRows = 500, options = 32, partialStartIndex = 0)
 
         self.assertEqual(genquery_parsed, genquery_unmarshalled)
 
@@ -81,8 +81,8 @@ class BinaryMessageTestCase(unittest.TestCase):
         dataobjinp_marshalled = '/ARCS/home/russell.sim\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00%@#ANULLSTR$%\x00\x00\x00\x00\x00%@#ANULLSTR$%\x00%@#ANULLSTR$%\x00'
         dataobjinp_parsed = binary.dataObjInp.parse(dataobjinp_marshalled)
         dataobjinp_unmarshalled = Container(keyValPair = Container(len = 0,
-                                                keyWords = None,
-                                                values = None),
+                                                keyWords = [],
+                                                values = []),
                          createMode = 0,
                          dataSize = 0,
                          numThreads = 0,

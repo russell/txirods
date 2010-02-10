@@ -125,17 +125,19 @@ class IRODS(IRODSChannel):
                          flags = 0,
                          oprType = 0,
                          keyValPair = Container(len = 0,
-                                                keyWords = None,
-                                                values = None),)
+                                                keyWords = [],
+                                                values = []),)
         d = self.sendApiReq(int_info=api.COLL_CREATE_AN,
                             data=self.api_request_map[api.COLL_CREATE_AN].build(data))
         d.addBoth(self.sendNextRequest)
         return d
 
 
-    def rmcoll(self, path='', recursive=False):
+    def rmcoll(self, path='', **kwargs):
         """
         remove collection
+
+        Optional Keyword args: 'forceFlag', 'recursiveOpr' and 'irodsRmTrash'
 
         :param path: the location of the collection
         :type path: str
@@ -146,13 +148,15 @@ class IRODS(IRODSChannel):
         data = Container(collName = path,
                          flags = 0,
                          oprType = 0,
-                         keyValPair = Container(keyWords = None,
+                         keyValPair = Container(keyWords = [],
                                                 len = 0,
-                                                values = None))
-        if recursive:
-            data.keyValPair = Container(keyWords = ['recursiveOpr'],
-                                        len = 1,
-                                        values = [''])
+                                                values = []))
+
+        for k, v in kwargs:
+            data.keyValPair.len = data.keyValPair.len + 1
+            data.keyValPair.keyWords.append(k)
+            data.keyValPair.values.append(v)
+
         d = self.sendApiReq(int_info=api.RM_COLL_AN,
                             data=self.api_request_map[api.RM_COLL_AN].build(data))
         d.addBoth(self.sendNextRequest)
@@ -188,8 +192,8 @@ class IRODS(IRODSChannel):
         :rtype: :class:`~twisted.internet.defer.Deferred`
         """
         data = Container(keyValPair = Container(len = 0,
-                                                keyWords = None,
-                                                values = None),
+                                                keyWords = [],
+                                                values = []),
                          continueInx = 0,
                          inxIvalPair = Container(
                             len = 0,
@@ -226,8 +230,8 @@ class IRODS(IRODSChannel):
         :rtype: :class:`~twisted.internet.defer.Deferred`
         """
         data = Container(keyValPair = Container(len = 0,
-                                                keyWords = None,
-                                                values = None),
+                                                keyWords = [],
+                                                values = []),
                          createMode = 0,
                          dataSize = 0,
                          numThreads = 0,
@@ -286,9 +290,9 @@ class IRODS(IRODSChannel):
 
         data = Container(createMode = 0,
                          dataSize = size,
-                         keyValPair = Container(keyWords = None,
+                         keyValPair = Container(keyWords = [],
                                                 len = 0,
-                                                values = None),
+                                                values = []),
                          numThreads = 0,
                          objPath = objPath,
                          offset = 0,
@@ -314,8 +318,8 @@ class IRODS(IRODSChannel):
         :rtype: :class:`~twisted.internet.defer.Deferred`
         """
         data = Container(keyValPair = Container(len = 0,
-                                                keyWords = None,
-                                                values = None),
+                                                keyWords = [],
+                                                values = []),
                          createMode = 0,
                          dataSize = 0,
                          numThreads = 0,
