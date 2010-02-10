@@ -30,6 +30,7 @@ setup(name='txIRODS',
       iinit = txirods.clients.iinit:main
       ipwd = txirods.clients.ipwd:main
       ils = txirods.clients.ils:main
+      icd = txirods.clients.icd:main
       iput = txirods.clients.iput:main
       iget = txirods.clients.iget:main
       imkdir = txirods.clients.imkdir:main
