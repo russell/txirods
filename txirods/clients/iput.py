@@ -18,27 +18,52 @@
 #
 #############################################################################
 
-import os
-from os import path
+import sys
+import posixpath as rpath
 
-from twisted.python import log, filepath
+from twisted.python import log, filepath, failure
 from twisted.internet import reactor, defer
+from twisted.protocols import basic
 
 from txirods.clients.base import IRODSClientController
-from twisted.protocols import basic
+from txirods import errors
 
 
 class PutController(IRODSClientController):
 
+    usage = """usage: %prog [options] SOURCE...
+  or:  %prog [options] SOURCE... DIRECTORY
+  or:  %prog [options] SOURCE DEST"""
+
     def configure(self, opts, args):
         IRODSClientController.configure(self, opts, args)
-        pwd = self.config.irodsCwd
-        self.localfile = path.join(os.getcwd(), args[0])
-        self.remotefile = path.join(pwd, args[0])
 
-    def connectClient(self, client):
-        IRODSClientController.connectClient(self, client)
-        self.sendConnect()
+        self.paths = []
+        for path in args:
+            fp = filepath.FilePath(path)
+            if fp.isdir():
+                if not opts.recursive:
+                    print "omitting directory `%s'" % path
+                    continue
+            self.paths.append(fp)
+
+        if not self.paths:
+            sys.exit(0)
+
+        # If the last path element isn't local it might be remote
+        if not self.paths[-1].exists():
+            self.paths.pop()
+            dest = args[-1]
+            if not rpath.isabs(dest):
+                dest = rpath.normpath(rpath.join(self.config.irodsCwd, dest))
+            self.dest = dest
+        else:
+            self.dest = self.config.irodsCwd
+
+    def parseArguments(self, optp):
+        optp.add_option("-r", "--recursive", action='store_true',
+                        help="copy directories recursively")
+        IRODSClientController.parseArguments(self, optp)
 
     def sendConnect(self):
         user = self.config.irodsUserName
@@ -50,29 +75,70 @@ class PutController(IRODSClientController):
 
     def sendAuth(self, data):
         d = self.client.sendAuthChallenge(self.credentials.password)
-        d.addCallbacks(self.sendStat, self.sendDisconnect)
+        d.addCallbacks(self.sendCommands, self.sendDisconnect)
 
-    def sendStat(self, data):
-        pwd = self.config.irodsCwd
-        d = self.client.objStat(pwd)
-        d.addCallbacks(self.sendPut, self.printStacktrace)
+    def sendCommands(self, data):
+        d = self.client.objStat(self.dest)
+        d.addCallbacks(self.cb_checkRemotePath, self.cb_catchSingleFileUpload)
+        d.addCallbacks(self.cb_startCopy, self.printStacktrace)
         d.addErrback(self.sendDisconnect)
         return data
 
-    def sendPut(self, data):
-        f = filepath.FilePath(self.localfile)
-        size = f.getsize()
-        self.fp = f.open('rb')
-        producer_cb = lambda x: basic.FileSender().beginFileTransfer(self.fp, self.client.transport)
-        d = self.client.put(defer.Deferred().addCallback(producer_cb), self.remotefile, size)
-        d.addCallbacks(self.cleanUp)
-        d.addErrback(self.printStacktrace)
-        self.sendDisconnect(data)
+    def cb_catchSingleFileUpload(self, failure):
+        if len(self.paths) == 1:
+            failure.trap(errors.USER_FILE_DOES_NOT_EXIST)
+            return self.dest
+
+    def cb_checkRemotePath(self, data):
+        if data.objType == 'DATA_OBJ_T':
+            return failure.Failure(Exception("remote file %s already exists" % self.dest))
+        if data.objType == 'COLL_OBJ_T':
+            return self.dest
+        return failure.Failure(Exception("remote path exists, but not sure what it is"))
+
+    def cb_startCopy(self, data):
+        dest = data
+        if self.paths == 1:
+            d = self.sendPut(self.paths[0], dest)
+            d.addBoth(self.sendDisconnect)
+            return data
+
+        cbs = []
+
+        def queue_copy(source, parent=''):
+            if source.isdir():
+                for child in source.children():
+                    cbs.append(self.client.mkcoll(rpath.join(dest, parent, source.basename())))
+                    queue_copy(child, rpath.join(parent, source.basename()))
+            else:
+                cbs.append(self.sendPut(source, rpath.join(dest, parent, source.basename())))
+
+        for source in self.paths:
+            queue_copy(source)
+        dl = defer.DeferredList(cbs)
+        dl.addBoth(self.sendDisconnect)
         return data
 
-    def cleanUp(self, data):
-        self.fp.close()
-        del self.fp
+    def sendPut(self, localfile, remotepath):
+        """
+        Queue a put command
+
+        :param localfile: the request that is to be processed
+        :type :class:`~twisted.python.filepath.FilePath`:
+        :param remotepath: the remote path to write the file to
+        :type :str
+        :rtype:class:`~twisted.internet.defer.Deferred`:
+        """
+        size = localfile.getsize()
+        fp = localfile.open('rb')
+        producer_cb = lambda x: basic.FileSender().beginFileTransfer(fp, self.client.transport)
+        d = self.client.put(defer.Deferred().addCallback(producer_cb), remotepath, size)
+        d.addBoth(self.cb_cleanUp, fp)
+        d.addErrback(self.printStacktrace)
+        return d
+
+    def cb_cleanUp(self, data, fp):
+        fp.close()
         return data
 
 def main(*args):
