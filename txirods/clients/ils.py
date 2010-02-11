@@ -19,18 +19,20 @@
 #############################################################################
 
 import time
-from os import path
+import posixpath as rpath
 
-from twisted.internet import reactor
+from twisted.internet import reactor, defer
 from txirods.clients.base import IRODSClientController
 
 
 class PrettyPrinter(object):
-    def __init__(self):
+    def __init__(self, path='', newline=False):
         self.lens = {'TYPE': 1, 'NAME': 0,
                      'OWNER': 0, 'MODIFIED': 0,
                      'MODE': 0, 'SIZE': 0}
         self.data = []
+        self.path = path
+        self.newline = newline
 
     def coll_table(self, data):
         if not data:
@@ -46,7 +48,7 @@ class PrettyPrinter(object):
                     k = coll_map[k]
                     coll[k] = v
                     if k == 'NAME':
-                        coll[k] = path.basename(v)
+                        coll[k] = rpath.basename(v)
                     l = len(v)
                     if l > self.lens[k]:
                         self.lens[k] = l
@@ -77,6 +79,10 @@ class PrettyPrinter(object):
     def prettyprint(self, data):
         lens = self.lens
         data = self.data
+        if self.newline:
+            print ''
+        if self.path:
+            print self.path + ":"
         for row in data:
             print row['TYPE'].ljust(lens['TYPE']),
             print row['OWNER'].ljust(lens['OWNER']),
@@ -88,39 +94,50 @@ class PrettyPrinter(object):
 
 
 class LsController(IRODSClientController):
+    usage = """usage: %prog [options] [file]..."""
 
-    def sendConnect(self):
-        user = self.config.irodsUserName
-        zone = self.config.irodsZone
-        d = self.client.sendConnect(proxy_user=user, proxy_zone=zone,
-                                    client_zone=zone, client_user=user)
-        d.addCallbacks(self.sendAuth, self.printStacktrace)
-        d.addErrback(self.sendDisconnect)
+    def configure(self, opts, args):
+        IRODSClientController.configure(self, opts, args)
 
-    def sendAuth(self, data):
-        d = self.client.sendAuthChallenge(self.credentials.password)
-        d.addCallbacks(self.sendStat, self.sendDisconnect)
+        self.paths = list(set(args))
+        self.paths.sort()
 
-    def sendStat(self, data):
-        pwd = self.config.irodsCwd
-        d = self.client.objStat(pwd)
-        d.addCallbacks(self.sendListContents, self.printStacktrace)
+        if not args:
+            self.paths.append(self.config.irodsCwd)
+
+    def sendCommands(self, data):
+        cbs = []
+
+        for path in self.paths:
+            newline = True
+            if path == self.paths[0]:
+                newline = False
+            if not rpath.isabs(path):
+                path = rpath.normpath(rpath.join(self.config.irodsCwd, path))
+            d = self.client.objStat(path)
+            d.addCallbacks(self.sendListContents, self.printStacktrace, [path, newline])
+            cbs.append(d)
+
+        dl = defer.DeferredList(cbs)
+        dl.addBoth(self.sendDisconnect)
         return data
 
-    def sendListContents(self, data):
-        pwd = self.config.irodsCwd
-        printer = PrettyPrinter()
-        d = self.client.listCollections(pwd)
+    def sendListContents(self, data, path, newline=False):
+        if len(self.paths) == 1:
+            printer = PrettyPrinter()
+        else:
+            printer = PrettyPrinter(path=path, newline=newline)
+
+        d = self.client.listCollections(path)
         d.addErrback(self.printStacktrace)
         d.addCallback(self.parseSqlResult)
         d.addCallback(printer.coll_table)
 
-        d = self.client.listObjects(pwd)
+        d = self.client.listObjects(path)
         d.addErrback(self.printStacktrace)
         d.addCallback(self.parseSqlResult)
         d.addCallback(printer.obj_table)
         d.addCallback(printer.prettyprint)
-        self.sendDisconnect(data)
         return data
 
 
