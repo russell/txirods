@@ -307,9 +307,11 @@ class IRODS(IRODSChannel):
         return d
 
 
-    def rmobj(self, objPath='', force=False):
+    def rmobj(self, objPath='', **kwargs):
         """
         unlink an object from the irods file system
+
+        Optional Keyword args: 'forceFlag'
 
         :param objPath: the location of the object
         :type objPath: str
@@ -328,10 +330,11 @@ class IRODS(IRODSChannel):
                          openFlags = 0,
                          oprType = 0,
                          specColl = None)
-        if force:
-            data.keyValPair = Container(keyWords = ['forceFlag'],
-                                        len = 1,
-                                        values = [''])
+        for k, v in kwargs:
+            data.keyValPair.len = data.keyValPair.len + 1
+            data.keyValPair.keyWords.append(k)
+            data.keyValPair.values.append(v)
+
         d = self.sendApiReq(int_info=api.DATA_OBJ_UNLINK_AN,
                             data=self.api_request_map[api.DATA_OBJ_UNLINK_AN].build(data))
         d.addBoth(self.sendNextRequest)
