@@ -51,13 +51,14 @@ class RmController(IRODSClientController):
         pwd = self.config.irodsCwd
         d = self.client.objStat(self.rm_path)
         d.addCallbacks(self.sendRm, self.printStacktrace)
+        d.addErrback(self.sendDisconnect)
         return data
 
     def sendRm(self, data):
         pwd = self.config.irodsCwd
         d = self.client.rmobj(self.rm_path)
         d.addErrback(self.printStacktrace)
-        return self.sendDisconnect(data)
+        d.addBoth(self.sendDisconnect)
 
 
 def main(*args):
