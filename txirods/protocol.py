@@ -219,7 +219,12 @@ class IRODSChannel(Protocol):
         self.header_len = self.header_len - len(data[:self.header_len])
 
         if self.response.int_info < 0:
-            self.nextDeferred.errback(errors.int_to_cls[self.response.int_info]())
+            if errors.int_to_cls.has_key(self.response.int_info):
+                self.nextDeferred.errback(errors.int_to_cls[self.response.int_info]())
+            else:
+                general_error = errors.IRODSException()
+                general_error.number = self.response.int_info
+                self.nextDeferred.errback(general_error)
 
         return rawdata
 
