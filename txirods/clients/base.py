@@ -31,13 +31,14 @@ from txirods.config import ConfigParser, AuthParser
 class IRODSClientController(object):
 
     factory = IRODSClientFactory
+    usage = "usage: %prog [options]"
 
     def __init__(self, reactor):
         self.reactor = reactor
         self.client = None
 
         import optparse
-        optp = optparse.OptionParser()
+        optp = optparse.OptionParser(self.usage)
         # Parse the arguments (defaults to parsing sys.argv).
         self.parseArguments(optp)
         opts, args = optp.parse_args()
