@@ -89,10 +89,6 @@ class PrettyPrinter(object):
 
 class LsController(IRODSClientController):
 
-    def connectClient(self, client):
-        IRODSClientController.connectClient(self, client)
-        self.sendConnect()
-
     def sendConnect(self):
         user = self.config.irodsUserName
         zone = self.config.irodsZone

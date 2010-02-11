@@ -90,6 +90,22 @@ class IRODSClientController(object):
 
     def connectClient(self, client):
         self.client = client
+        self.sendConnect()
+
+    def sendConnect(self):
+        user = self.config.irodsUserName
+        zone = self.config.irodsZone
+        d = self.client.sendConnect(proxy_user=user, proxy_zone=zone,
+                                    client_zone=zone, client_user=user)
+        d.addCallbacks(self.sendAuth, self.printStacktrace)
+        d.addErrback(self.sendDisconnect)
+
+    def sendAuth(self, data):
+        d = self.client.sendAuthChallenge(self.credentials.password)
+        d.addCallbacks(self.sendCommands, self.sendDisconnect)
+
+    def sendCommands(self, data):
+        self.sendDisconnect()
 
     def parseSqlResult(self, data):
         if not data: return {}

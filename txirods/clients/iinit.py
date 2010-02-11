@@ -29,10 +29,6 @@ from twisted.internet import reactor, defer
 
 class InitController(IRODSClientController):
 
-    def connectClient(self, client):
-        IRODSClientController.connectClient(self, client)
-        self.sendConnect()
-
     def sendConnect(self):
         user = self.config.irodsUserName
         zone = self.config.irodsZone

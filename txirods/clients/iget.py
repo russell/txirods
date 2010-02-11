@@ -35,10 +35,6 @@ class GetController(IRODSClientController):
         self.localfile = path.join(os.getcwd(), args[0])
         self.remotefile = path.join(pwd, args[0])
 
-    def connectClient(self, client):
-        IRODSClientController.connectClient(self, client)
-        self.sendConnect()
-
     def sendConnect(self):
         user = self.config.irodsUserName
         zone = self.config.irodsZone

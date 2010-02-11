@@ -31,10 +31,6 @@ class RmController(IRODSClientController):
         pwd = self.config.irodsCwd
         self.rm_path = path.join(pwd, args[0])
 
-    def connectClient(self, client):
-        IRODSClientController.connectClient(self, client)
-        self.sendConnect()
-
     def sendConnect(self):
         user = self.config.irodsUserName
         zone = self.config.irodsZone

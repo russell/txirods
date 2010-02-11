@@ -24,10 +24,6 @@ from twisted.internet import reactor, defer
 
 class PwdController(IRODSClientController):
 
-    def connectClient(self, client):
-        IRODSClientController.connectClient(self, client)
-        self.sendConnect()
-
     def printResult(self, data):
         pwd = self.config.irodsCwd
         print pwd
