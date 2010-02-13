@@ -107,8 +107,8 @@ class PutController(IRODSClientController):
 
         def queue_copy(source, parent=''):
             if source.isdir():
+                cbs.append(self.client.mkcoll(rpath.join(dest, parent, source.basename())))
                 for child in source.children():
-                    cbs.append(self.client.mkcoll(rpath.join(dest, parent, source.basename())))
                     queue_copy(child, rpath.join(parent, source.basename()))
             else:
                 cbs.append(self.sendPut(source, rpath.join(dest, parent, source.basename())))
