@@ -152,7 +152,7 @@ class IRODS(IRODSChannel):
                                                 len = 0,
                                                 values = []))
 
-        for k, v in kwargs:
+        for k, v in kwargs.items():
             data.keyValPair.len = data.keyValPair.len + 1
             data.keyValPair.keyWords.append(k)
             data.keyValPair.values.append(v)
@@ -330,7 +330,7 @@ class IRODS(IRODSChannel):
                          openFlags = 0,
                          oprType = 0,
                          specColl = None)
-        for k, v in kwargs:
+        for k, v in kwargs.items():
             data.keyValPair.len = data.keyValPair.len + 1
             data.keyValPair.keyWords.append(k)
             data.keyValPair.values.append(v)

@@ -18,43 +18,79 @@
 #
 #############################################################################
 
-from os import path
+import sys
+import posixpath as rpath
 
+from twisted.python import log, failure
 from twisted.internet import reactor
 from txirods.clients.base import IRODSClientController
 
 
 class RmController(IRODSClientController):
 
+    usage = """usage: %prog [options] FILE..."""
+
     def configure(self, opts, args):
         IRODSClientController.configure(self, opts, args)
         pwd = self.config.irodsCwd
-        self.rm_path = path.join(pwd, args[0])
 
-    def sendConnect(self):
-        user = self.config.irodsUserName
-        zone = self.config.irodsZone
-        d = self.client.sendConnect(proxy_user=user, proxy_zone=zone,
-                                    client_zone=zone, client_user=user)
-        d.addCallbacks(self.sendAuth, self.printStacktrace)
-        d.addErrback(self.sendDisconnect)
+        self.paths = []
+        for path in args:
+            if rpath.isabs(path):
+                self.paths.append(path)
+            else:
+                self.paths.append(rpath.normpath(rpath.join(self.config.irodsCwd, path)))
 
-    def sendAuth(self, data):
-        d = self.client.sendAuthChallenge(self.credentials.password)
-        d.addCallbacks(self.sendStat, self.sendDisconnect)
+        if not self.paths:
+            sys.exit(0)
 
-    def sendStat(self, data):
+        self.flags = dict.fromkeys(opts.flags, '')
+
+    def parseArguments(self, optp):
+        optp.add_option("-r", "--recursive", action='append_const', const='recursiveOpr',
+                        dest="flags", default=[], help="copy directories recursively")
+        optp.add_option("-f", "--force", action='append_const', const='forceFlag',
+                        dest="flags", default=[], help="force deletion of files, skipping trash")
+        IRODSClientController.parseArguments(self, optp)
+
+    def sendCommands(self, data):
         pwd = self.config.irodsCwd
-        d = self.client.objStat(self.rm_path)
-        d.addCallbacks(self.sendRm, self.printStacktrace)
-        d.addErrback(self.sendDisconnect)
+        for path in self.paths:
+            d = self.client.objStat(path)
+            d.addErrback(self.sendDisconnect)
+            d.addCallback(self.cb_checkRemotePath, path)
+            d.addErrback(self.printStacktrace)
         return data
 
-    def sendRm(self, data):
-        pwd = self.config.irodsCwd
-        d = self.client.rmobj(self.rm_path)
+    def cb_checkRemotePath(self, data, path):
+        if data.objType == 'DATA_OBJ_T':
+            d = self.sendRm(path)
+            return data
+        if data.objType == 'COLL_OBJ_T':
+            if not 'recursiveOpr' in self.flags:
+                if self.paths[-1] == path:
+                    self.sendDisconnect(data)
+                return failure.Failure(Exception("cannot remove `%s': Is a directory" % path))
+            else:
+                self.sendRmDir(path)
+                return data
+        if self.paths[-1] == path:
+            self.sendDisconnect(data)
+        return failure.Failure(Exception("remote path exists, but not sure what it is"))
+
+    def sendRmDir(self, path):
+        d = self.client.rmcoll(path, **self.flags)
+        if self.paths[-1] == path:
+            d.addBoth(self.sendDisconnect)
         d.addErrback(self.printStacktrace)
-        d.addBoth(self.sendDisconnect)
+        return d
+
+    def sendRm(self, path):
+        d = self.client.rmobj(path, **self.flags)
+        if self.paths[-1] == path:
+            d.addBoth(self.sendDisconnect)
+        d.addErrback(self.printStacktrace)
+        return d
 
 
 def main(*args):
