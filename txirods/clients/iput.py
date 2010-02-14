@@ -65,18 +65,6 @@ class PutController(IRODSClientController):
                         help="copy directories recursively")
         IRODSClientController.parseArguments(self, optp)
 
-    def sendConnect(self):
-        user = self.config.irodsUserName
-        zone = self.config.irodsZone
-        d = self.client.sendConnect(proxy_user=user, proxy_zone=zone,
-                                    client_zone=zone, client_user=user)
-        d.addCallbacks(self.sendAuth, self.printStacktrace)
-        d.addErrback(self.sendDisconnect)
-
-    def sendAuth(self, data):
-        d = self.client.sendAuthChallenge(self.credentials.password)
-        d.addCallbacks(self.sendCommands, self.sendDisconnect)
-
     def sendCommands(self, data):
         d = self.client.objStat(self.dest)
         d.addCallbacks(self.cb_checkRemotePath, self.cb_catchSingleFileUpload)
