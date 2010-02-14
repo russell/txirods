@@ -19,7 +19,6 @@
 #############################################################################
 
 import posixpath as rpath
-from getpass import getpass
 
 from twisted.python import log
 from twisted.internet import reactor
@@ -29,6 +28,8 @@ from twisted.internet import reactor, defer
 
 
 class CdController(IRODSClientController):
+
+    usage = """usage: %prog [options] FILE..."""
 
     def configure(self, opts, args):
         IRODSClientController.configure(self, opts, args)
