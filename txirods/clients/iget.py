@@ -19,8 +19,11 @@
 #############################################################################
 
 import os
-from os import path
+import os.path
+import sys
+import posixpath as rpath
 
+from twisted.python import log, filepath
 from twisted.internet import reactor, defer
 
 from txirods.clients.base import IRODSClientController
@@ -29,35 +32,52 @@ from txirods.protocol import FileRecever
 
 class GetController(IRODSClientController):
 
+    usage = """usage: %prog [options] SOURCE...
+  or:  %prog [options] SOURCE... DIRECTORY
+  or:  %prog [options] SOURCE DEST"""
+
     def configure(self, opts, args):
         IRODSClientController.configure(self, opts, args)
-        pwd = self.config.irodsCwd
-        self.localfile = path.join(os.getcwd(), args[0])
-        self.remotefile = path.join(pwd, args[0])
 
-    def sendConnect(self):
-        user = self.config.irodsUserName
-        zone = self.config.irodsZone
-        d = self.client.sendConnect(proxy_user=user, proxy_zone=zone,
-                                    client_zone=zone, client_user=user)
-        d.addCallbacks(self.sendAuth, self.printStacktrace)
-        d.addErrback(self.sendDisconnect)
+        self.paths = []
+        for path in args:
+            if rpath.isabs(path):
+                self.paths.append(path)
+            else:
+                self.paths.append(rpath.normpath(rpath.join(self.config.irodsCwd, path)))
 
-    def sendAuth(self, data):
-        d = self.client.sendAuthChallenge(self.credentials.password)
-        d.addCallbacks(self.sendStat, self.sendDisconnect)
+        if not self.paths:
+            sys.exit(0)
+        # TODO still need to handle the case where there is one argument and
+        # it has the same name as a local file.
 
-    def sendStat(self, data):
-        d = self.client.objStat(self.remotefile)
-        d.addCallbacks(self.sendGet, self.printStacktrace)
-        d.addErrback(self.sendDisconnect)
-        return data
+        # If the last path element is local it might be the dest
+        if filepath.FilePath(args[-1]).exists():
+            self.paths.pop()
+            dest = args[-1]
+            if not rpath.isabs(dest):
+                dest = rpath.normpath(rpath.join(os.getcwd(), dest))
+            self.dest = dest
+        else:
+            self.dest = os.getcwd()
 
-    def sendGet(self, data):
-        f = FileRecever(self.localfile)
-        d = self.client.get(f, self.remotefile, data.objSize)
+    def sendCommands(self, data):
+        for path in self.paths:
+            self.sendGet(path)
+
+    def sendGet(self, path):
+        d = self.client.objStat(path)
+        d.addCallbacks(self.cb_get, self.printStacktrace, [path])
+        if path == self.paths[-1]:
+            d.addErrback(self.sendDisconnect)
+        return d
+
+    def cb_get(self, data, path):
+        f = FileRecever(os.path.normpath(os.path.join(self.dest, rpath.basename(path))))
+        d = self.client.get(f, path, data.objSize)
         d.addErrback(self.printStacktrace)
-        self.sendDisconnect(data)
+        if self.paths[-1] == path:
+            d.addBoth(self.sendDisconnect)
         return data
 
 
