@@ -29,14 +29,6 @@ from twisted.internet import reactor, defer
 
 class InitController(IRODSClientController):
 
-    def sendConnect(self):
-        user = self.config.irodsUserName
-        zone = self.config.irodsZone
-        d = self.client.sendConnect(proxy_user=user, proxy_zone=zone,
-                                    client_zone=zone, client_user=user)
-        d.addCallbacks(self.sendAuth, self.printStacktrace)
-        d.addErrback(self.sendDisconnect)
-
     def sendAuth(self, data):
         self.credentials.password = getpass("Password:")
         d = self.client.sendAuthChallenge(self.credentials.password)
