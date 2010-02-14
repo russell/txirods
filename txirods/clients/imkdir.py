@@ -18,7 +18,7 @@
 #
 #############################################################################
 
-from os import path
+import posixpath as rpath
 
 from twisted.internet import reactor
 from txirods.clients.base import IRODSClientController
@@ -26,31 +26,25 @@ from txirods.clients.base import IRODSClientController
 
 class MkdirController(IRODSClientController):
 
+    usage = """usage: %prog [options] DIRECTORY..."""
+
     def configure(self, opts, args):
         IRODSClientController.configure(self, opts, args)
-        pwd = self.config.irodsCwd
-        self.new_path = path.join(pwd, args[0])
 
-    def sendConnect(self):
-        user = self.config.irodsUserName
-        zone = self.config.irodsZone
-        d = self.client.sendConnect(proxy_user=user, proxy_zone=zone,
-                                    client_zone=zone, client_user=user)
-        d.addCallbacks(self.sendAuth, self.printStacktrace)
-        d.addErrback(self.sendDisconnect)
+        path = args[0]
+        if rpath.isabs(path):
+            self.path = path
+        else:
+            self.path = rpath.normpath(rpath.join(self.config.irodsCwd, path))
 
-    def sendAuth(self, data):
-        d = self.client.sendAuthChallenge(self.credentials.password)
-        d.addCallbacks(self.sendStat, self.sendDisconnect)
-
-    def sendStat(self, data):
+    def sendCommands(self, data):
         pwd = self.config.irodsCwd
         d = self.client.objStat(pwd)
         d.addCallbacks(self.sendMkdir, self.printStacktrace)
         return data
 
     def sendMkdir(self, data):
-        d = self.client.mkcoll(self.new_path)
+        d = self.client.mkcoll(self.path)
         d.addErrback(self.printStacktrace)
         return self.sendDisconnect(data)
 
