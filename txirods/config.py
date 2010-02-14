@@ -82,9 +82,10 @@ class ConfigParser(object):
         """
         write the iRODS Env file
         """
-        o = open(dotirodsEnv, 'r+')
+        o = open(dotirodsEnv, 'r')
         out = self.generate(o)
-        o.seek(0)
+        o.close()
+        o = open(dotirodsEnv, 'w')
         o.writelines(out)
         o.close()
 
