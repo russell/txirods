@@ -18,7 +18,7 @@
 #
 #############################################################################
 
-from os import path
+import posixpath as rpath
 from getpass import getpass
 
 from twisted.python import log
@@ -32,36 +32,32 @@ class CdController(IRODSClientController):
 
     def configure(self, opts, args):
         IRODSClientController.configure(self, opts, args)
-        pwd = self.config.irodsCwd
-        self.new_path = path.normpath(path.join(pwd, args[0]))
 
-    def sendConnect(self):
-        user = self.config.irodsUserName
-        zone = self.config.irodsZone
-        d = self.client.sendConnect(proxy_user=user, proxy_zone=zone,
-                                    client_zone=zone, client_user=user)
-        d.addCallbacks(self.sendAuth, self.printStacktrace)
-        d.addErrback(self.sendDisconnect)
+        if args:
+            path = args[0]
+        else:
+            path = self.config.irodsHome
 
-    def sendAuth(self, data):
-        d = self.client.sendAuthChallenge(self.credentials.password)
-        d.addCallbacks(self.sendStat, self.sendDisconnect)
+        if rpath.isabs(path):
+            self.path = path
+        else:
+            self.path = rpath.normpath(rpath.join(self.config.irodsCwd, path))
 
-    def sendStat(self, data):
-        d = self.client.objStat(self.new_path)
+    def sendCommands(self, data):
+        d = self.client.objStat(self.path)
         d.addCallbacks(self.saveCwd, self.printCwd)
         d.addErrback(self.printStacktrace)
         d.addErrback(self.sendDisconnect)
         return data
 
     def saveCwd(self, data):
-        self.config.irodsCwd = self.new_path
+        self.config.irodsCwd = self.path
         self.config.write()
         self.sendDisconnect(data)
         return data
 
     def printCwd(self, data):
-        print self.new_path
+        print self.path
         return data
 
 def main(*args):
