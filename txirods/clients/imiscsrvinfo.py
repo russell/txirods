@@ -25,15 +25,7 @@ from datetime import datetime
 
 class PwdController(IRODSClientController):
 
-    def sendConnect(self):
-        user = self.config.irodsUserName
-        zone = self.config.irodsZone
-        d = self.client.sendConnect(proxy_user=user, proxy_zone=zone,
-                                    client_zone=zone, client_user=user)
-        d.addCallbacks(self.sendMiscServerInfo, self.sendDisconnect)
-        d.addErrback(self.sendDisconnect)
-
-    def sendMiscServerInfo(self, data):
+    def sendCommands(self, data):
         d = self.client.miscServerInfo()
         d.addCallbacks(self.printMiscServerInfo, self.printStacktrace)
         self.sendDisconnect(data)
