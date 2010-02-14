@@ -29,6 +29,8 @@ from twisted.internet import reactor, defer
 
 class InitController(IRODSClientController):
 
+    usage = """usage: %prog [options]..."""
+
     def sendAuth(self, data):
         self.credentials.password = getpass("Password:")
         d = self.client.sendAuthChallenge(self.credentials.password)

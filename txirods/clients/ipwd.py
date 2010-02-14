@@ -24,6 +24,8 @@ from twisted.internet import reactor, defer
 
 class PwdController(IRODSClientController):
 
+    usage = """usage: %prog [options]..."""
+
     def printResult(self, data):
         pwd = self.config.irodsCwd
         print pwd

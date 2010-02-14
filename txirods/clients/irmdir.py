@@ -26,6 +26,8 @@ from txirods.clients.base import IRODSClientController
 
 class RmController(IRODSClientController):
 
+    usage = """usage: %prog [options] DIRECTORY..."""
+
     def configure(self, opts, args):
         IRODSClientController.configure(self, opts, args)
         pwd = self.config.irodsCwd

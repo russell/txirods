@@ -25,6 +25,8 @@ from datetime import datetime
 
 class PwdController(IRODSClientController):
 
+    usage = """usage: %prog [options]..."""
+
     def sendCommands(self, data):
         d = self.client.miscServerInfo()
         d.addCallbacks(self.printMiscServerInfo, self.printStacktrace)
