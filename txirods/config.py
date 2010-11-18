@@ -51,9 +51,16 @@ class ConfigParser(object):
         """
         read the iRODS Env file
         """
-        o = open(dotirodsEnv)
-        self.parse(o)
-        o.close()
+        if not path.exists(dotirodsdir):
+            os.mkdir(dotirodsdir)
+
+        try:
+            o = open(dotirodsEnv)
+        except IOError:
+            pass
+        else:
+            self.parse(o)
+            o.close()
 
     def parse(self, lines):
         """
@@ -129,9 +136,15 @@ class AuthParser(object):
         """
         read the iRODS .irodsA file
         """
-        o = open(dotirodsA)
-        self.parse(o.readlines()[0])
-        o.close()
+        if not path.exists(dotirodsdir):
+            os.mkdir(dotirodsdir)
+        try:
+            o = open(dotirodsA)
+        except IOError:
+            pass
+        else:
+            self.parse(o.readlines()[0])
+            o.close()
 
     def parse(self, line):
         """
