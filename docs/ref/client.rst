@@ -1,7 +1,7 @@
 :mod:`~txirods.client` -- The general protocol specification
 ============================================================
 
-.. _ref-client
+.. _ref-client:
 
 .. module:: txirods.client
 .. moduleauthor:: Russell Sim <russell.sim@gmail.com>

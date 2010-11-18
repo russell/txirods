@@ -1,14 +1,14 @@
 :mod:`~txirods.protocol` -- The general protocol specification
 ==============================================================
 
-.. _ref-protocol
+.. _ref-protocol:
 
 .. module:: txirods.protocol
 .. moduleauthor:: Russell Sim <russell.sim@gmail.com>
 
 
 :class:`FileRecever` Objects
-------------------------
+----------------------------
 .. autoclass:: FileRecever
    :members:
    :undoc-members:

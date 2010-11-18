@@ -55,10 +55,12 @@ class FileRecever(object):
         C{pauseProducing} will be called whenever the write buffer fills up
         and C{resumeProducing} will only be called when it empties.
 
-        :param producer: :class:`~twisted.internet.interfaces.IProducer` provider
+        :param producer: :class:`~twisted.internet.interfaces.IProducer`
+           provider
         :param streaming: True if producer provides
-        :class:`~twisted.internet.interfaces.IPushProducer`, False if producer
-        provides :class:`~twisted.internet.interfaces.IPullProducer`.
+           :class:`~twisted.internet.interfaces.IPushProducer`, False if
+           producer provides
+           :class:`~twisted.internet.interfaces.IPullProducer`.
         :type streaming: Bool
         :raises RuntimeError: If a producer is already registered.
         :rtype: None
