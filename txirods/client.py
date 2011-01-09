@@ -88,8 +88,8 @@ class IRODS(IRODSChannel):
         self.sendNextRequest(None)
 
     def finishConnect(self, data):
-        log.msg("\nFinish connection, by setting up api and version info\n", debug=True)
-
+        log.msg("\nFinish connection, by setting" +
+                " up api and version info\n", debug=True)
 
     def listObjects(self, path=''):
         """
