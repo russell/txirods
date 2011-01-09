@@ -33,6 +33,7 @@ from protocol import IRODSChannel, Request
 from txirods.encoding import rods2_1_binary_inp, rods2_1_generic, \
                         rods2_1_binary_out
 
+
 class IRODS(IRODSChannel):
     def __init__(self):
         IRODSChannel.__init__(self)
@@ -46,7 +47,6 @@ class IRODS(IRODSChannel):
         self.generic_reponse_map = rods2_1_generic
         self.request_queue = defer.DeferredQueue()
         self.nextDeferred = None
-
 
     def sendRequest(self, request):
         """
@@ -74,7 +74,6 @@ class IRODS(IRODSChannel):
         if request.data_stream_cb:
             request.data_stream_cb.callback(None)
 
-
     def sendNextRequest(self, data):
         """
         send the next queued request
@@ -85,10 +84,8 @@ class IRODS(IRODSChannel):
         self.request_queue.get().addCallback(self.sendRequest)
         return data
 
-
     def connectionMade(self):
         self.sendNextRequest(None)
-
 
     def finishConnect(self, data):
         log.msg("\nFinish connection, by setting up api and version info\n", debug=True)
@@ -112,7 +109,6 @@ class IRODS(IRODSChannel):
                              'COL_D_CREATE_TIME',
                              COL_COLL_NAME=" = '%s'" % path)
 
-
     def mkcoll(self, path=''):
         """
         make a new collection
@@ -131,7 +127,6 @@ class IRODS(IRODSChannel):
                             data=self.api_request_map[api.COLL_CREATE_AN].build(data))
         d.addBoth(self.sendNextRequest)
         return d
-
 
     def rmcoll(self, path='', **kwargs):
         """
@@ -161,7 +156,6 @@ class IRODS(IRODSChannel):
                             data=self.api_request_map[api.RM_COLL_AN].build(data))
         d.addBoth(self.sendNextRequest)
         return d
-
 
     def listCollections(self, path=''):
         """
@@ -220,7 +214,6 @@ class IRODS(IRODSChannel):
         d.addBoth(self.sendNextRequest)
         return d
 
-
     def objStat(self, objPath=''):
         """
         stat the details of an object
@@ -244,7 +237,6 @@ class IRODS(IRODSChannel):
                             data=self.api_request_map[api.OBJ_STAT_AN].build(data))
         d.addBoth(self.sendNextRequest)
         return d
-
 
     def put(self, producer_cb, objPath, size):
         """
@@ -275,7 +267,6 @@ class IRODS(IRODSChannel):
         d.addBoth(self.sendNextRequest)
         return d
 
-
     def get(self, consumer, objPath, size):
         """
         get a file from irods
@@ -305,7 +296,6 @@ class IRODS(IRODSChannel):
                             bs_consumer=consumer)
         d.addBoth(self.sendNextRequest)
         return d
-
 
     def rmobj(self, objPath='', **kwargs):
         """
@@ -355,7 +345,6 @@ class IRODS(IRODSChannel):
         self.request_queue.put(r)
         return d
 
-
     def sendDisconnect(self, err_len=0, bs_len=0, int_info=0, data=''):
         d = defer.Deferred()
         d.addCallback(self.sendNextRequest)
@@ -364,7 +353,6 @@ class IRODS(IRODSChannel):
         r.msg_type = 'RODS_DISCONNECT'
         self.request_queue.put(r)
         return d
-
 
     def sendConnect(self, reconnFlag=0, connectCnt=0, proxy_user='',
                     proxy_zone='', client_user='', client_zone='', option=''):
@@ -384,16 +372,13 @@ class IRODS(IRODSChannel):
         self.request_queue.put(r)
         return d
 
-
     def registerConsumer(self, consumer):
         if self.consumer:
             raise Exception("Can't register consumer, another consumer is registered")
         self.consumer = consumer
 
-
     def unregisterConsumer(self):
         self.consumer = None
-
 
     def sendAuthGsi(self):
         d = self.sendApiReq(api.GSI_AUTH_REQUEST_AN)
@@ -414,13 +399,11 @@ class IRODS(IRODSChannel):
         d.addCallback(self.nextDeferred.callback)
         return
 
-
     def sendAuthChallenge(self, password):
         self.password = password
         d = self.sendApiReq(api.AUTH_REQUEST_AN)
         d.addBoth(self.sendNextRequest)
         return d
-
 
     def handleAuthChallange(self, data):
         log.msg("\nChallenge\n" + repr(data), debug=True)
@@ -447,7 +430,6 @@ class IRODS(IRODSChannel):
         self.sendMessage(msg_type='RODS_API_REQ',
                          int_info=api.AUTH_RESPONSE_AN,
                          data=resp + userandzone + '\0')
-
 
     def handleAuthChallangeResponse(self, data):
         if self.response.int_info >= 0:
@@ -487,14 +469,12 @@ class IRODS(IRODSChannel):
             self.handleAuthChallange(data)
             return
 
-
     def processByteStream(self, data):
         self.bytestream_consumer.write(data)
         if self.bytestream_len == 0:
             self.bytestream_consumer.unregisterProducer()
             self.bytestream_consumer = None
             self.nextDeferred.callback('')
-
 
     def processOther(self, data):
         log.msg("\nPROCESSOTHER\n", debug=True)
@@ -537,4 +517,3 @@ class IRODSClientFactory(ClientFactory):
 
     def clientConnectionLost(self, connector, reason):
         reactor.callLater(0, self.cb_connection_lost.callback, reason)
-

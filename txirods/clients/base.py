@@ -28,6 +28,7 @@ from txirods import errors
 from txirods.client import IRODSClientFactory
 from txirods.config import ConfigParser, AuthParser
 
+
 class IRODSClientController(object):
 
     factory = IRODSClientFactory
@@ -73,7 +74,6 @@ class IRODSClientController(object):
 
         # Set up basic configuration, out to stderr with a reasonable default format.
         logging.basicConfig(level=log_level)
-
 
     def connectTCP(self):
         cb_connect = defer.Deferred()
@@ -134,4 +134,3 @@ class IRODSClientController(object):
     def connectionFailed(self, reason):
         print "Connection Failed:", reason
         self.reactor.stop()
-
