@@ -23,6 +23,7 @@ class ConstantsAdapter(object):
     def __init__(self):
         self.const_to_int = {}
         self.int_to_const = {}
+
     def setConstant(self, name, value):
         self.const_to_int[name] = value
         self.int_to_const[value] = name
@@ -217,5 +218,3 @@ COL_SLD_CREATE_TIME = const_map.setConstant('COL_SLD_CREATE_TIME', 1502)
 
 const_to_int = const_map.const_to_int
 int_to_const = const_map.int_to_const
-
-

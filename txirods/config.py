@@ -26,6 +26,7 @@ dotirodsdir = path.join(homedir, ".irods")
 dotirodsEnv = path.join(dotirodsdir, ".irodsEnv")
 dotirodsA = path.join(dotirodsdir, ".irodsA")
 
+
 class ConfigParser(object):
     """
     A really simple irods config parser
@@ -162,4 +163,3 @@ class AuthParser(object):
         o = open(dotirodsA, 'w')
         o.write(self.password)
         o.close()
-

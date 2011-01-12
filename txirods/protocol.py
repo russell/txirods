@@ -36,6 +36,7 @@ class FileRecever(object):
     A consumer consumes data from a producer.
     """
     implements(interfaces.IConsumer)
+
     def __init__(self, filename):
         self.file = open(filename, 'w')
 
@@ -103,7 +104,7 @@ class Request(object):
         self.int_info = 0
         self.err_len = 0
         self.bs_len = 0
-        self.msg_type =''
+        self.msg_type = ''
         self.data = ''
         self.bs_consumer = None
         self.data_stream_cb = None
@@ -141,7 +142,6 @@ class IRODSChannel(Protocol):
         self._processed_header = False
         self._buffer = ''
 
-
     def sendMessage(self, msg_type='', err_len=0, bs_len=0, int_info=0,
                     data=''):
         """
@@ -160,15 +160,14 @@ class IRODSChannel(Protocol):
         """
         msg_len = len(data)
         self.int_info = int(int_info)
-        header = messages.header.substitute({'type':msg_type,
-                                             'msg_len':msg_len,
-                                             'err_len':err_len,
-                                             'bs_len':bs_len,
-                                             'int_info':int_info})
+        header = messages.header.substitute({'type': msg_type,
+                                             'msg_len': msg_len,
+                                             'err_len': err_len,
+                                             'bs_len': bs_len,
+                                             'int_info': int_info})
         log.msg("\n--------SEND\n" + header + repr(data), debug=True)
         num = struct.pack('!L', len(header))
         self.transport.write(num + header + data)
-
 
     def dataReceived(self, data):
         if self.consumer:
@@ -189,7 +188,6 @@ class IRODSChannel(Protocol):
             return
 
         self.doneProcessing()
-
 
     def headerReceived(self, data):
         if self._processed_header:
@@ -214,22 +212,23 @@ class IRODSChannel(Protocol):
             self.parser.close()
             self.parser = None
             self._processed_header = True
-            self.message_len, self.error_len, self.bytestream_len = self.response.getMessageLengths()
+            self.message_len, self.error_len, self.bytestream_len = \
+                self.response.getMessageLengths()
 
         rawdata = data[self.header_len:]
 
         self.header_len = self.header_len - len(data[:self.header_len])
 
         if self.response.int_info < 0:
-            if errors.int_to_cls.has_key(self.response.int_info):
-                self.nextDeferred.errback(errors.int_to_cls[self.response.int_info]())
+            if self.response.int_info in errors.int_to_cls.has_key:
+                self.nextDeferred.errback(
+                    errors.int_to_cls[self.response.int_info]())
             else:
                 general_error = errors.IRODSException()
                 general_error.number = self.response.int_info
                 self.nextDeferred.errback(general_error)
 
         return rawdata
-
 
     def processData(self, data):
         if self.message_len:
@@ -258,14 +257,12 @@ class IRODSChannel(Protocol):
 
         return self.processOther(data)
 
-
     def processMessage(self, data):
         """
         This function is called once the message header is parsed and the
         message body has been loaded into a buffer.
         """
         pass
-
 
     def processError(self, data):
         """
@@ -274,14 +271,12 @@ class IRODSChannel(Protocol):
         """
         pass
 
-
     def processByteStream(self, data):
         """
         This function is called as data arrives, until there is no more to
         be sent.
         """
         pass
-
 
     def processOther(self, data):
         """
@@ -292,7 +287,6 @@ class IRODSChannel(Protocol):
         """
         pass
 
-
     def doneProcessing(self):
         """
         After all other process functions have finished this function is
@@ -301,4 +295,3 @@ class IRODSChannel(Protocol):
         self._processed_header = False
         self._buffer = ''
         log.msg("\nDONE PROCESSING\n")
-

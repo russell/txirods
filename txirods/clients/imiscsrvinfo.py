@@ -18,10 +18,12 @@
 #
 #############################################################################
 
+from twisted.internet import reactor
+
 from txirods.clients.base import IRODSClientController
-from twisted.internet import reactor, defer
 
 from datetime import datetime
+
 
 class PwdController(IRODSClientController):
 
