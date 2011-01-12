@@ -117,14 +117,15 @@ class IRODS(IRODSChannel):
         :type path: str
         :rtype: :class:`~twisted.internet.defer.Deferred`
         """
-        data = Container(collName = path,
-                         flags = 0,
-                         oprType = 0,
-                         keyValPair = Container(len = 0,
-                                                keyWords = [],
-                                                values = []),)
+        data = Container(collName=path,
+                         flags=0,
+                         oprType=0,
+                         keyValPair=Container(len=0,
+                                                keyWords=[],
+                                                values=[]),)
         d = self.sendApiReq(int_info=api.COLL_CREATE_AN,
-                            data=self.api_request_map[api.COLL_CREATE_AN].build(data))
+                            data=self.api_request_map[api.COLL_CREATE_AN]\
+                                .build(data))
         d.addBoth(self.sendNextRequest)
         return d
 
@@ -140,12 +141,12 @@ class IRODS(IRODSChannel):
         :type recursive: bool
         :rtype: :class:`~twisted.internet.defer.Deferred`
         """
-        data = Container(collName = path,
-                         flags = 0,
-                         oprType = 0,
-                         keyValPair = Container(keyWords = [],
-                                                len = 0,
-                                                values = []))
+        data = Container(collName=path,
+                         flags=0,
+                         oprType=0,
+                         keyValPair=Container(keyWords=[],
+                                                len=0,
+                                                values=[]))
 
         for k, v in kwargs.items():
             data.keyValPair.len = data.keyValPair.len + 1
@@ -153,7 +154,8 @@ class IRODS(IRODSChannel):
             data.keyValPair.values.append(v)
 
         d = self.sendApiReq(int_info=api.RM_COLL_AN,
-                            data=self.api_request_map[api.RM_COLL_AN].build(data))
+                            data=self.api_request_map[api.RM_COLL_AN]\
+                                .build(data))
         d.addBoth(self.sendNextRequest)
         return d
 
@@ -172,8 +174,7 @@ class IRODS(IRODSChannel):
                              'COL_COLL_TYPE',
                              'COL_COLL_INFO1',
                              'COL_COLL_INFO2',
-                             COL_COLL_PARENT_NAME = " = '%s'" % path)
-
+                             COL_COLL_PARENT_NAME=" = '%s'" % path)
 
     def genQuery(self, *select, **where):
         """
@@ -185,19 +186,19 @@ class IRODS(IRODSChannel):
         :type where: str
         :rtype: :class:`~twisted.internet.defer.Deferred`
         """
-        data = Container(keyValPair = Container(len = 0,
-                                                keyWords = [],
-                                                values = []),
-                         continueInx = 0,
-                         inxIvalPair = Container(
-                            len = 0,
-                            inx = [],
-                            value = []),
-                         inxValPair = Container(
-                            len = 0,
-                            inx = [],
-                            value = []),
-                         maxRows = 500, options = 32, partialStartIndex = 0)
+        data = Container(keyValPair=Container(len=0,
+                                              keyWords=[],
+                                              values=[]),
+                         continueInx=0,
+                         inxIvalPair=Container(
+                            len=0,
+                            inx=[],
+                            value=[]),
+                         inxValPair=Container(
+                            len=0,
+                            inx=[],
+                            value=[]),
+                         maxRows=500, options=32, partialStartIndex=0)
 
         for s in select:
             data.inxIvalPair.len = data.inxIvalPair.len + 1
@@ -210,7 +211,8 @@ class IRODS(IRODSChannel):
             data.inxValPair.value.append(v)
 
         d = self.sendApiReq(int_info=api.GEN_QUERY_AN,
-                            data=self.api_request_map[api.GEN_QUERY_AN].build(data))
+                            data=self.api_request_map[api.GEN_QUERY_AN]\
+                                .build(data))
         d.addBoth(self.sendNextRequest)
         return d
 
@@ -222,19 +224,20 @@ class IRODS(IRODSChannel):
         :type objPath: str
         :rtype: :class:`~twisted.internet.defer.Deferred`
         """
-        data = Container(keyValPair = Container(len = 0,
-                                                keyWords = [],
-                                                values = []),
-                         createMode = 0,
-                         dataSize = 0,
-                         numThreads = 0,
-                         objPath = objPath,
-                         offset = 0,
-                         openFlags = 0,
-                         oprType = 0,
-                         specColl = None)
+        data = Container(keyValPair=Container(len=0,
+                                              keyWords=[],
+                                              values=[]),
+                         createMode=0,
+                         dataSize=0,
+                         numThreads=0,
+                         objPath=objPath,
+                         offset=0,
+                         openFlags=0,
+                         oprType=0,
+                         specColl=None)
         d = self.sendApiReq(int_info=api.OBJ_STAT_AN,
-                            data=self.api_request_map[api.OBJ_STAT_AN].build(data))
+                            data=self.api_request_map[api.OBJ_STAT_AN]\
+                                .build(data))
         d.addBoth(self.sendNextRequest)
         return d
 
@@ -242,27 +245,29 @@ class IRODS(IRODSChannel):
         """
         send a file to irods
 
-        :param producer_cb: a callback that registers a producer to start producing over clients transport.
+        :param producer_cb: a callback that registers a producer to start
+           producing over clients transport.
         :param objPath: the location of the object
         :type objPath: str
         :param size: the size of the object in bytes
         :type size: int
         :rtype: :class:`~twisted.internet.defer.Deferred`
         """
-        data = Container(createMode = 33261,
-                         dataSize = size,
-                         keyValPair = Container(
-                             len = 2,
-                             keyWords = ['dataType', 'dataIncluded'],
-                             values = ['generic', '']),
-                         numThreads = 0,
-                         objPath = objPath,
-                         offset = 0,
-                         openFlags = 2,
-                         oprType = 1,
-                         specColl = None)
+        data = Container(createMode=33261,
+                         dataSize=size,
+                         keyValPair=Container(
+                             len=2,
+                             keyWords=['dataType', 'dataIncluded'],
+                             values=['generic', '']),
+                         numThreads=0,
+                         objPath=objPath,
+                         offset=0,
+                         openFlags=2,
+                         oprType=1,
+                         specColl=None)
         d = self.sendApiReq(int_info=api.DATA_OBJ_PUT_AN, bs_len=size,
-                            data=self.api_request_map[api.DATA_OBJ_PUT_AN].build(data),
+                            data=self.api_request_map[api.DATA_OBJ_PUT_AN]\
+                                .build(data),
                             data_stream_cb=producer_cb)
         d.addBoth(self.sendNextRequest)
         return d
@@ -271,7 +276,8 @@ class IRODS(IRODSChannel):
         """
         get a file from irods
 
-        :param consumer: provides :class:`~twisted.internet.interfaces.IConsumer`.
+        :param consumer: provides
+           :class:`~twisted.internet.interfaces.IConsumer`.
         :param objPath: the location of the object
         :type objPath: str
         :param size: the size of the object in bytes
@@ -279,20 +285,21 @@ class IRODS(IRODSChannel):
         :rtype: :class:`~twisted.internet.defer.Deferred`
         """
 
-        data = Container(createMode = 0,
-                         dataSize = size,
-                         keyValPair = Container(keyWords = [],
-                                                len = 0,
-                                                values = []),
-                         numThreads = 0,
-                         objPath = objPath,
-                         offset = 0,
-                         openFlags = 0,
-                         oprType = 2,
-                         specColl = None)
+        data = Container(createMode=0,
+                         dataSize=size,
+                         keyValPair=Container(keyWords=[],
+                                              len=0,
+                                              values=[]),
+                         numThreads=0,
+                         objPath=objPath,
+                         offset=0,
+                         openFlags=0,
+                         oprType=2,
+                         specColl=None)
 
         d = self.sendApiReq(int_info=api.DATA_OBJ_GET_AN,
-                            data=self.api_request_map[api.DATA_OBJ_GET_AN].build(data),
+                            data=self.api_request_map[api.DATA_OBJ_GET_AN]\
+                                .build(data),
                             bs_consumer=consumer)
         d.addBoth(self.sendNextRequest)
         return d
@@ -309,29 +316,30 @@ class IRODS(IRODSChannel):
         :type force: bool
         :rtype: :class:`~twisted.internet.defer.Deferred`
         """
-        data = Container(keyValPair = Container(len = 0,
-                                                keyWords = [],
-                                                values = []),
-                         createMode = 0,
-                         dataSize = 0,
-                         numThreads = 0,
-                         objPath = objPath,
-                         offset = 0,
-                         openFlags = 0,
-                         oprType = 0,
-                         specColl = None)
+        data = Container(keyValPair=Container(len=0,
+                                              keyWords=[],
+                                              values=[]),
+                         createMode=0,
+                         dataSize=0,
+                         numThreads=0,
+                         objPath=objPath,
+                         offset=0,
+                         openFlags=0,
+                         oprType=0,
+                         specColl=None)
         for k, v in kwargs.items():
             data.keyValPair.len = data.keyValPair.len + 1
             data.keyValPair.keyWords.append(k)
             data.keyValPair.values.append(v)
 
         d = self.sendApiReq(int_info=api.DATA_OBJ_UNLINK_AN,
-                            data=self.api_request_map[api.DATA_OBJ_UNLINK_AN].build(data))
+                            data=self.api_request_map[api.DATA_OBJ_UNLINK_AN]\
+                                .build(data))
         d.addBoth(self.sendNextRequest)
         return d
 
-
-    def sendApiReq(self, int_info=0, err_len=0, bs_len=0, data='', bs_consumer=None, data_stream_cb=None):
+    def sendApiReq(self, int_info=0, err_len=0, bs_len=0, data='',
+                   bs_consumer=None, data_stream_cb=None):
         d = defer.Deferred()
         r = Request()
         r.deferred = d
@@ -357,10 +365,14 @@ class IRODS(IRODSChannel):
     def sendConnect(self, reconnFlag=0, connectCnt=0, proxy_user='',
                     proxy_zone='', client_user='', client_zone='', option=''):
         log.msg("\nsendConnect\n", logging.INFO)
-        self.connect_info = {'irodsProt':self.api, 'reconnFlag': reconnFlag,
-                             'connectCnt': connectCnt, 'proxyUser':proxy_user,
-                             'proxyRcatZone': proxy_zone, 'clientUser': client_user,
-                             'clientRcatZone': client_zone, 'option': option}
+        self.connect_info = {'irodsProt': self.api,
+                             'reconnFlag': reconnFlag,
+                             'connectCnt': connectCnt,
+                             'proxyUser': proxy_user,
+                             'proxyRcatZone': proxy_zone,
+                             'clientUser': client_user,
+                             'clientRcatZone': client_zone,
+                             'option': option}
         startup = messages.connect.substitute(self.connect_info)
         d = defer.Deferred()
         d.addCallback(self.finishConnect)
@@ -374,7 +386,8 @@ class IRODS(IRODSChannel):
 
     def registerConsumer(self, consumer):
         if self.consumer:
-            raise Exception("Can't register consumer, another consumer is registered")
+            raise Exception("Can't register consumer, " +
+                            "another consumer is registered")
         self.consumer = consumer
 
     def unregisterConsumer(self):
@@ -487,8 +500,8 @@ class IRODS(IRODSChannel):
 
         # handle empty reponse messages
         if self.request.int_info in [api.COLL_CREATE_AN,
-                             api.DATA_OBJ_PUT_AN,
-                             api.DATA_OBJ_UNLINK_AN,]:
+                                     api.DATA_OBJ_PUT_AN,
+                                     api.DATA_OBJ_UNLINK_AN]:
             if self.response.int_info >= 0:
                 self.nextDeferred.callback('')
             return

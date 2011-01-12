@@ -63,16 +63,17 @@ class IRODSClientController(object):
         self.credentials.read()
 
     def configure(self, opts, args):
-        # Here would be a good place to check what came in on the command line and
-        # call optp.error("Useful message") to exit if all it not well.
-        log_level = logging.WARNING # default
+        # Here would be a good place to check what came in on the command line
+        # and call optp.error("Useful message") to exit if all it not well.
+        log_level = logging.WARNING  # default
         if opts.verbose == 1:
             log_level = logging.INFO
         elif opts.verbose >= 2:
             log_level = logging.DEBUG
             log.startLogging(sys.stdout)
 
-        # Set up basic configuration, out to stderr with a reasonable default format.
+        # Set up basic configuration, out to stderr with a
+        # reasonable default format.
         logging.basicConfig(level=log_level)
 
     def connectTCP(self):
