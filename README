@@ -1,0 +1,12 @@
+
+txIRODS
+=======
+
+txIRODS is an implementation of the IRODS binary protocol using python
+and the asynchronous networking tool kit Twisted. The project started
+as a means of providing a JSON interface to iRODS for use with web
+application that run within stand alone python servers like Plone,
+Pylons and CherryPy. The primary reason is that these multiuser
+systems requred individual user logins which wasn't possible with the
+PyRods C wrapper due to limitations and instabilities with the client
+libraries.
