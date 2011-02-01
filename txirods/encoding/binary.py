@@ -18,6 +18,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 #############################################################################
+
 from string import Template
 from construct import Enum, Struct, CString, SBInt32, UBInt32, UBInt64
 from construct import MetaArray, IfThenElse, Adapter, ConstError
@@ -102,7 +103,8 @@ inxIvalPair = Struct('inxIvalPair',
                      IfThenElse('inx', nulls,
                                 MetaArray(count, key_Mapper), Null_Pointer),
                      IfThenElse('value', nulls,
-                                MetaArray(count, UBInt32('value')), Null_Pointer))
+                                MetaArray(count, UBInt32('value')),
+                                Null_Pointer))
 
 
 inxValPair = Struct('inxValPair',
@@ -110,7 +112,8 @@ inxValPair = Struct('inxValPair',
                      IfThenElse('inx', nulls,
                                 MetaArray(count, key_Mapper), Null_Pointer),
                      IfThenElse('value', nulls,
-                                MetaArray(count, CString('value')), Null_Pointer))
+                                MetaArray(count, CString('value')),
+                                Null_Pointer))
 
 
 objType = Enum(UBInt32('objType'),
