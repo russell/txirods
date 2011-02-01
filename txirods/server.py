@@ -27,10 +27,8 @@ from twisted.python import log, failure
 
 from txirods.protocol import IRODSChannel
 from txirods import api
-from txirods.encoding import rodsml
-
 from txirods.encoding import rods2_1_binary_inp, rods2_1_generic, \
-                        rods2_1_binary_out
+                        rods2_1_binary_out, rodsml
 
 
 class IRODSBaseServer(IRODSChannel):
@@ -51,13 +49,15 @@ class IRODSBaseServer(IRODSChannel):
             except:
                 self.nextDeferred.errback(failure.Failure())
             else:
-                if hasattr(self, 'msg_' + self.response.msg_type.lower()):
-                    return getattr(self, 'msg_' + self.response.msg_type.lower())(data)
+                if hasattr(self, 'msg_{0}'.format(self.response.msg_type.lower())):
+                    return getattr(self, 'msg_{0}'.format(self.response.msg_type.lower()))(data)
                 else:
                     return self.msg_rods_not_supported(data)
 
-        if hasattr(self, 'msg_' + self.response.msg_type.lower() + '_' + str(self.response.int_info)):
-            return getattr(self, 'msg_' + self.response.msg_type.lower() + '_' + str(self.response.int_info))(data)
+        if hasattr(self, 'msg_{0}_{0}'.format(self.response.msg_type.lower(),
+                                              str(self.response.int_info))):
+            return getattr(self, 'msg_{0}_{0}'.format(self.response.msg_type.lower(),
+                                                      str(self.response.int_info)))(data)
         else:
             return self.msg_rods_not_supported(data)
 
@@ -67,20 +67,20 @@ class IRODSBaseServer(IRODSChannel):
         print data
         self.sendMessage('RODS_API_REPLY')
 
-
     def processOther(self, data):
         log.msg("\nPROCESSOTHER\n", debug=True)
 
         # handle empty reponse messages
-        if self.response.int_info in [api.AUTH_REQUEST_AN,]:
-            if hasattr(self, 'msg_' + self.response.msg_type.lower() + '_' + str(self.response.int_info)):
-                return getattr(self, 'msg_' + self.response.msg_type.lower() + '_' + str(self.response.int_info))(data)
+        if self.response.int_info in [api.AUTH_REQUEST_AN]:
+            if hasattr(self, 'msg_{0}_{0}'.format(self.response.msg_type.lower(),
+                                                  str(self.response.int_info))):
+                return getattr(self, 'msg_{0}_{0}'.format(self.response.msg_type.lower(),
+                                                          str(self.response.int_info)))(data)
             else:
                 raise Exception("WTF Other Error")
 
         if self.response.msg_type == 'RODS_DISCONNECT':
             return self.msg_rods_disconnect(data)
-
 
     def msg_rods_api_req(self, data):
         if self.response.int_info in self.api_reponse_map:
@@ -97,7 +97,6 @@ class IRODSBaseServer(IRODSChannel):
         self.challange = ''.join([struct.pack('!f', random.random()) for i in range(16)])
         self.sendMessage('RODS_API_REPLY', data=self.challange)
         return
-
 
     def msg_rods_api_req_704(self, data):
         log.msg("\nChallenge response\n" + repr(data), debug=True)
@@ -127,23 +126,26 @@ class IRODSBaseServer(IRODSChannel):
                          int_info=api.AUTH_RESPONSE_AN,
                          data=resp + userandzone + '\0')
 
-
     def msg_rods_not_supported(self, data):
         """call this if the server doesn't implement a proper response"""
         self.sendMessage(msg_type='RODS_API_REPLY', int_info=-66000)
 
-
     def msg_rods_connect(self, data):
         """
-        {u'proxyRcatZone': u'tempZone', u'option': '', u'relVersion': u'rods2.1', u'proxyUser': u'rods', u'irodsProt': 0, u'connectCnt': 0, u'apiVersion': u'd', u'reconnFlag': 0, u'clientUser': u'rods', u'clientRcatZone': u'tempZone'}
+        {u'proxyRcatZone': u'tempZone',
+        u'option': '', u'relVersion':
+        u'rods2.1', u'proxyUser':
+        u'rods', u'irodsProt': 0,
+        u'connectCnt': 0, u'apiVersion': u'd',
+        u'reconnFlag': 0, u'clientUser': u'rods',
+        u'clientRcatZone': u'tempZone'}
         """
         self.connect_info = data
-        response_data = {'status': 0, 'relVersion':'rods2.1',
-                         'apiVersion': 'd', 'reconnPort':0,
+        response_data = {'status': 0, 'relVersion': 'rods2.1',
+                         'apiVersion': 'd', 'reconnPort': 0,
                          'reconnAddr': '', 'cookie': 0}
         response_data = rodsml.version_pi.substitute(response_data)
         self.sendMessage('RODS_VERSION', data=response_data)
-
 
     def msg_rods_disconnect(self, data):
         self.transport.loseConnection()
@@ -155,4 +157,3 @@ class IRODSServerFactory(Factory):
 
     def __init__(self):
         self.test = "yes it works"
-

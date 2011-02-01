@@ -69,7 +69,7 @@ class ConfigParser(object):
         as attributes.
 
         :param lines: the lines from the iRODS Env file.
-        :type lines: List of Str
+        :type lines: list of string
         """
         for l in lines:
             # skip comments
@@ -102,8 +102,8 @@ class ConfigParser(object):
         generate a config file based on the origional config file
 
         :param lines: the lines from the iRODS Env file.
-        :type lines: List of Str
-        :rtype: List of Str
+        :type lines: list of string
+        :rtype: list of string
         """
         out = []
         to_write = ['irodsHost', 'irodsDefResource', 'irodsHome',
@@ -152,7 +152,7 @@ class AuthParser(object):
         parse the iRODS .irodsA file contents
 
         :param line: the line from the iRODS Env file.
-        :type line: Str
+        :type line: string
         """
         self.password = line
 

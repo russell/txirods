@@ -32,7 +32,8 @@ class GSIAuth(object):
     implements(interfaces.IPushProducer)
 
     def beginAuthentication(self, data, consumer, producer):
-        self.paused = 0; self.stopped = 0
+        self.paused = 0
+        self.stopped = 0
         self.consumer = consumer
         self.producer = producer
         self.deferred = deferred = defer.Deferred()
