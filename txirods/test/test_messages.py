@@ -156,5 +156,21 @@ class BinaryMessageTestCase(unittest.TestCase):
         # TODO Currently broken because it doesn't pad with ANULLSTR
         #self.assertEqual(genqueryout_generated, genqueryout_marshalled)
 
+    def testSimpleQueryInpMarshall(self):
+        simplequery_marshalled = "select * from r_user_main where user_name=?\x00rods\x00%@#ANULLSTR$%\x00%@#ANULLSTR$%\x00%@#ANULLSTR$%\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+        simplequery_parsed = binary.simpleQueryInp.parse(simplequery_marshalled)
+        simplequery_unmarshalled = \
+                Container(sql='select * from r_user_main where user_name=?',
+                          arg1='rods',
+                          arg2=None,
+                          arg3=None,
+                          arg4=None,
+                          control=0,
+                          form=0,
+                          maxBufSize=0)
 
+        self.assertEqual(simplequery_parsed, simplequery_unmarshalled)
 
+        simplequery_generated = binary.simpleQueryInp.build(simplequery_unmarshalled)
+
+        self.assertEqual(simplequery_generated, simplequery_marshalled)
