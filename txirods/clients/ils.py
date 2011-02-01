@@ -44,7 +44,7 @@ class PrettyPrinter(object):
         for row in data:
             coll = {'TYPE': 'c', 'SIZE': '0'}
             for k, v in row.items():
-                if coll_map.has_key(k):
+                if k in coll_map:
                     k = coll_map[k]
                     coll[k] = v
                     if k == 'NAME':
@@ -67,7 +67,7 @@ class PrettyPrinter(object):
         for row in data:
             obj = {'TYPE': ''}
             for k, v in row.items():
-                if obj_map.has_key(k):
+                if k in obj_map:
                     k = obj_map[k]
                     obj[k] = v
                     l = len(v)
@@ -115,7 +115,8 @@ class LsController(IRODSClientController):
             if not rpath.isabs(path):
                 path = rpath.normpath(rpath.join(self.config.irodsCwd, path))
             d = self.client.objStat(path)
-            d.addCallbacks(self.sendListContents, self.printStacktrace, [path, newline])
+            d.addCallbacks(self.sendListContents,
+                           self.printStacktrace, [path, newline])
             cbs.append(d)
 
         dl = defer.DeferredList(cbs)

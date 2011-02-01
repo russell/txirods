@@ -18,16 +18,17 @@
 #
 #############################################################################
 
+import struct
+from xml.sax import make_parser
+
+from zope.interface import implements
 from twisted.internet.protocol import Protocol
 from twisted.internet import interfaces
 from twisted.internet import defer
 from twisted.python import log
-from zope.interface import implements
-import struct
-from txirods.encoding import binary as messages
-from txirods import errors
-from xml.sax import make_parser
 
+from txirods import errors
+from txirods.encoding import binary as messages
 from txirods.header import IRODSHeaderHandler
 
 

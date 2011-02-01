@@ -109,7 +109,8 @@ class IRODSClientController(object):
         self.sendDisconnect()
 
     def parseSqlResult(self, data):
-        if not data: return {}
+        if not data:
+            return {}
         new_data = []
         for col in data.sqlResult:
             for r in range(data.rowCnt):
@@ -123,7 +124,7 @@ class IRODSClientController(object):
         return None
 
     def sendDisconnect(self, data):
-        d = self.client.sendDisconnect()
+        self.client.sendDisconnect()
         return data
 
     def connectionLost(self, reason):

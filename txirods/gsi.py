@@ -58,7 +58,8 @@ class GSIAuth(object):
         self.paused = False
         if first:
             if not data:
-                # Already Authed because there was no DN recieved from the server
+                # Already Authed because there was no DN
+                # recieved from the server
                 self.consumer.unregisterProducer()
                 self.producer.unregisterConsumer()
                 reactor.callLater(0.001, self.deferred.callback, True)
@@ -69,7 +70,7 @@ class GSIAuth(object):
 
             # create credential
             init_cred = GSSCred()
-            name, mechs, usage  = GSSName(free=False), GSSMechs(), GSSUsage()
+            name, mechs, usage = GSSName(free=False), GSSMechs(), GSSUsage()
 
             try:
                 init_cred.acquire_cred(name, mechs, usage)
@@ -87,28 +88,32 @@ class GSIAuth(object):
             requests = ContextRequests()
 
             target_name = GSSName()
-            major, minor, targetName_handle = gssc.import_name('arcs-df.vpac.org', gssc.cvar.GSS_C_NT_HOSTBASED_SERVICE)
+            major, minor, targetName_handle = \
+                   gssc.import_name('arcs-df.vpac.org',
+                                    gssc.cvar.GSS_C_NT_HOSTBASED_SERVICE)
             target_name._handle = targetName_handle
 
             requests.set_mutual()
             requests.set_replay()
 
-            self.data.update({'name':name, 'lifetime':lifetime, 'credName':credName,
-                              'targetName':target_name, 'todelete':name,
-                              'context':context, 'requests':requests, 'cred': init_cred})
+            self.data.update({'name': name, 'lifetime': lifetime,
+                              'credName': credName, 'targetName': target_name,
+                              'todelete': name, 'context': context,
+                              'requests': requests, 'cred': init_cred})
         else:
             context = self.data['context']
-            init_cred=self.data['cred']
-            target_name=self.data['targetName']
-            requests=self.data['requests']
+            init_cred = self.data['cred']
+            target_name = self.data['targetName']
+            requests = self.data['requests']
             self.buffer = self.buffer + data
             data = self.buffer
 
         try:
-            major,minor,outToken = context.init_context(init_cred=init_cred,
-                                                        target_name=target_name,
-                                                        inputTokenString=data,
-                                                        requests=requests)
+            major, minor, outToken = \
+                   context.init_context(init_cred=init_cred,
+                                        target_name=target_name,
+                                        inputTokenString=data,
+                                        requests=requests)
         except GSSContextException:
             # XXX this doesn't seem to be called, no idea
             print GSSContextException
@@ -131,5 +136,3 @@ class GSIAuth(object):
         print 'stopProducing: invoked'
         self.consumer.unregisterProducer()
         self.producer.unregisterConsumer()
-
-

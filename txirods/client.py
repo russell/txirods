@@ -20,16 +20,15 @@
 
 import logging
 from hashlib import md5
+
 from construct import Container
 from twisted.internet import reactor, defer
 from twisted.internet.protocol import ClientFactory
 from twisted.python import log, failure
-from txirods.encoding import binary as messages
+
 from txirods import api
-
-from protocol import IRODSChannel, Request
-
-
+from txirods.encoding import binary as messages
+from txirods.protocol import IRODSChannel, Request
 from txirods.encoding import rods2_1_binary_inp, rods2_1_generic, \
                         rods2_1_binary_out
 
