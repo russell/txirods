@@ -177,3 +177,34 @@ class BinaryMessageTestCase(unittest.TestCase):
         simplequery_generated = binary.simpleQueryInp.build(simplequery_unmarshalled)
 
         self.assertEqual(simplequery_generated, simplequery_marshalled)
+
+    def testSimpleQueryOutMarshall(self):
+        simplequery_marshalled = """\x00\x00\x00\x00user_id: 10007
+user_name: rods
+user_type_name: rodsadmin
+zone_name: testZone
+user_distin_name:
+user_info:
+r_comment:
+create_ts: 01296541027
+modify_ts: 01296541027
+\x00"""
+        simplequery_parsed = binary.simpleQueryOut.parse(simplequery_marshalled)
+        simplequery_unmarshalled = \
+                Container(control=0,
+                          outBuf="""user_id: 10007
+user_name: rods
+user_type_name: rodsadmin
+zone_name: testZone
+user_distin_name:
+user_info:
+r_comment:
+create_ts: 01296541027
+modify_ts: 01296541027
+""")
+
+        self.assertEqual(simplequery_parsed, simplequery_unmarshalled)
+
+        simplequery_generated = binary.simpleQueryOut.build(simplequery_unmarshalled)
+
+        self.assertEqual(simplequery_generated, simplequery_marshalled)

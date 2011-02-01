@@ -244,3 +244,10 @@ simpleQueryInp = Struct('simpleQueryInp',
                         SBInt32('form'),
                         SBInt32('maxBufSize'),
                         )
+
+
+simpleQueryOut = Struct('simpleQueryOut',
+                        SBInt32('control'),
+                        Select('outBuf',
+                               Null_Pointer,
+                               CString('')))
