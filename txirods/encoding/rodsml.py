@@ -22,6 +22,7 @@ from string import Template
 from xml.sax import make_parser
 from xml.sax.handler import ContentHandler
 
+
 class SimpleXMLHandler(ContentHandler):
     def __init__(self):
         self.data = {}
@@ -68,4 +69,3 @@ version_pi = Template("""<Version_PI>
 <reconnAddr>$reconnAddr</reconnAddr>
 <cookie>$cookie</cookie>
 </Version_PI>\n""")
-
