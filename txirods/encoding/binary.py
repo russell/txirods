@@ -148,8 +148,11 @@ specColl = Struct('specColl',
                   UBInt32('cacheDirty'),
                   UBInt32('replNum'))
 
-
 collInp = Struct('collInp',
+                 CString('collName'),
+                 keyValPair)
+
+collInp21 = Struct('collInp',
                  CString('collName'),
                  UBInt32('flags'),
                  UBInt32('oprType'),
@@ -223,6 +226,7 @@ miscSvrInfo = Struct('miscSvrInfo',
                      CString('relVersion'),
                      CString('apiVersion'),
                      CString('rodsZone'))
+
 
 simpleQueryInp = Struct('simpleQueryInp',
                         Select('sql',

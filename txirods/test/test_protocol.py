@@ -23,6 +23,7 @@ from txirods import protocol
 from txirods import header
 from twisted.test.proto_helpers import StringTransport
 
+
 class IRODSHeaderParserTestCase(unittest.TestCase):
 
     request = """<MsgHeader_PI>
@@ -46,7 +47,6 @@ class IRODSHeaderParserTestCase(unittest.TestCase):
         self.assertEqual(r.err_len, 2)
         self.assertEqual(r.bs_len, 3)
         self.assertEqual(r.int_info, 4)
-
 
     def test_iter_header_parse(self):
         from xml.sax import make_parser
@@ -116,7 +116,6 @@ class IRODSProtocolTestCase(unittest.TestCase):
         self.assertEqual(a.message_len, 0)
         self.assertEqual(a._processed_header, False)
 
-
     several_requests = """\0\0\0\x8b<MsgHeader_PI>
 <type>RODS_CONNECT</type>
 <msgLen>338</msgLen>
@@ -182,4 +181,3 @@ class IRODSProtocolTestCase(unittest.TestCase):
         self.assertEqual(a.response.msg_type, "RODS_VERSION")
         self.assertEqual(a.message_len, 0)
         self.assertEqual(a._processed_header, False)
-

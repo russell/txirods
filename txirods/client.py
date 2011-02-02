@@ -27,6 +27,7 @@ from twisted.internet.protocol import ClientFactory
 from twisted.python import log, failure
 
 from txirods import api
+from txirods.encoding import rodsSafe, get_api_mapper
 from txirods.encoding import binary as messages
 from txirods.protocol import IRODSChannel, Request
 from txirods.encoding import rods2_1_binary_inp, rods2_1_generic, \
@@ -41,6 +42,7 @@ class IRODS(IRODSChannel):
         self.consumer = None
         self.bytestream_consumer = None
         self.data = ''
+        self.api_mapper = rodsSafe()
         self.api_reponse_map = rods2_1_binary_out
         self.api_request_map = rods2_1_binary_inp
         self.generic_reponse_map = rods2_1_generic
@@ -87,6 +89,9 @@ class IRODS(IRODSChannel):
         self.sendNextRequest(None)
 
     def finishConnect(self, data):
+        self.api_mapper = get_api_mapper(data['relVersion'],
+                                         data['apiVersion'])()
+
         log.msg("\nFinish connection, by setting" +
                 " up api and version info\n", debug=True)
 
@@ -116,19 +121,11 @@ class IRODS(IRODSChannel):
         :type path: str
         :rtype: :class:`~twisted.internet.defer.Deferred`
         """
-        data = Container(collName=path,
-                         flags=0,
-                         oprType=0,
-                         keyValPair=Container(len=0,
-                                                keyWords=[],
-                                                values=[]),)
-        d = self.sendApiReq(int_info=api.COLL_CREATE_AN,
-                            data=self.api_request_map[api.COLL_CREATE_AN]\
-                                .build(data))
+        d = self.sendApiReq(**self.api_mapper.mkcoll(path))
         d.addBoth(self.sendNextRequest)
         return d
 
-    def rmcoll(self, path='', **kwargs):
+    def rmcoll(self, path='', recursive=False, **kwargs):
         """
         remove collection
 
@@ -140,21 +137,9 @@ class IRODS(IRODSChannel):
         :type recursive: bool
         :rtype: :class:`~twisted.internet.defer.Deferred`
         """
-        data = Container(collName=path,
-                         flags=0,
-                         oprType=0,
-                         keyValPair=Container(keyWords=[],
-                                                len=0,
-                                                values=[]))
-
-        for k, v in kwargs.items():
-            data.keyValPair.len = data.keyValPair.len + 1
-            data.keyValPair.keyWords.append(k)
-            data.keyValPair.values.append(v)
-
-        d = self.sendApiReq(int_info=api.RM_COLL_AN,
-                            data=self.api_request_map[api.RM_COLL_AN]\
-                                .build(data))
+        d = self.sendApiReq(**self.api_mapper.rmcoll(path,
+                                                     recursive,
+                                                     **kwargs))
         d.addBoth(self.sendNextRequest)
         return d
 
@@ -372,14 +357,20 @@ class IRODS(IRODSChannel):
                              'clientUser': client_user,
                              'clientRcatZone': client_zone,
                              'option': option}
-        startup = messages.connect.substitute(self.connect_info)
+
+        r = Request(**self.api_mapper.connect(reconnFlag=reconnFlag,
+                                              connectCnt=connectCnt,
+                                              proxy_user=proxy_user,
+                                              proxy_zone=proxy_zone,
+                                              client_user=client_user,
+                                              client_zone=client_zone,
+                                              option=option))
         d = defer.Deferred()
         d.addCallback(self.finishConnect)
         d.addCallback(self.sendNextRequest)
-        r = Request()
+
         r.deferred = d
-        r.msg_type = 'RODS_CONNECT'
-        r.data = startup
+
         self.request_queue.put(r)
         return d
 

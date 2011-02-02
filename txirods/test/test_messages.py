@@ -26,6 +26,7 @@ from txirods.encoding import binary
 
 from txirods.encoding.rodsml import SimpleXMLHandler
 
+
 class XMLMessageTestCase(unittest.TestCase):
 
     def test_version_parse(self):
@@ -208,3 +209,19 @@ modify_ts: 01296541027
         simplequery_generated = binary.simpleQueryOut.build(simplequery_unmarshalled)
 
         self.assertEqual(simplequery_generated, simplequery_marshalled)
+
+    def testCollInp2Marshall(self):
+        marshalled = """/testZone/home/rods/test\x00\x00\x00\x00\x00%@#ANULLSTR$%\x00%@#ANULLSTR$%\x00"""
+
+        parsed = binary.collInp.parse(marshalled)
+        unmarshalled = \
+                Container(collName='/testZone/home/rods/test',
+                          keyValPair=Container(
+                              keyWords=[],
+                              len=0, values=[]))
+
+        self.assertEqual(parsed, unmarshalled)
+
+        generated = binary.collInp.build(unmarshalled)
+
+        self.assertEqual(generated, marshalled)

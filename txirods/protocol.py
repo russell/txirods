@@ -100,13 +100,13 @@ class Request(object):
     :var bs_consumer: byte stream consumer to recieve data.
     :var data_stream_cb: a callback that starts byte stream producer.
     """
-    def __init__(self):
+    def __init__(self, int_info=0, err_len=0, bs_len=0, msg_type='', data=''):
         self.deferred = defer.Deferred()
-        self.int_info = 0
-        self.err_len = 0
-        self.bs_len = 0
-        self.msg_type = ''
-        self.data = ''
+        self.int_info = int_info
+        self.err_len = err_len
+        self.bs_len = bs_len
+        self.msg_type = msg_type
+        self.data = data
         self.bs_consumer = None
         self.data_stream_cb = None
 
