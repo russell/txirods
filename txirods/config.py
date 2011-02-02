@@ -41,7 +41,7 @@ class ConfigParser(object):
     """
     def __init__(self):
         self.irodsHost = ''
-        self.irodsPort = 0
+        self.irodsPort = 1247
         self.irodsDefResource = ''
         self.irodsHome = ''
         self.irodsCwd = ''
