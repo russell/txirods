@@ -103,15 +103,9 @@ class IRODS(IRODSChannel):
         :type path: str
         :rtype: :class:`~twisted.internet.defer.Deferred`
         """
-        return self.genQuery('COL_COLL_NAME',
-                             'COL_DATA_NAME',
-                             'COL_D_DATA_ID',
-                             'COL_D_OWNER_NAME',
-                             'COL_DATA_MODE',
-                             'COL_DATA_SIZE',
-                             'COL_D_MODIFY_TIME',
-                             'COL_D_CREATE_TIME',
-                             COL_COLL_NAME=" = '%s'" % path)
+        d = self.sendApiReq(**self.api_mapper.listObjects(path))
+        d.addBoth(self.sendNextRequest)
+        return d
 
     def mkcoll(self, path=''):
         """
