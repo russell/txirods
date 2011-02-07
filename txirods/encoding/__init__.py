@@ -98,7 +98,8 @@ class rods20(rodsSafe):
         :type select: list of str
         :param where: keyword arguments the make up the where clause.
         :type where: str
-        :rtype: :class:`~twisted.internet.defer.Deferred`
+        :returns: a dictionary containing the int_info and the data
+        :rtype: dict
         """
         data = Container(keyValPair=Container(len=0,
                                               keyWords=[],
@@ -146,6 +147,18 @@ class rods20(rodsSafe):
                              COL_COLL_PARENT_NAME=" = '%s'" % path)
 
     def rmcoll(self, path, recursive=False, **kwargs):
+        """
+        remove collection
+
+        Optional Keyword args: 'forceFlag', 'recursiveOpr' and 'irodsRmTrash'
+
+        :param path: the location of the collection
+        :type path: str
+        :param recursive: recursively delete
+        :type recursive: bool
+        :returns: a dictionary containing the int_info and the data
+        :rtype: dict
+        """
         data = Container(collName=path,
                          flags=0,
                          oprType=0,
