@@ -127,6 +127,24 @@ class rods20(rodsSafe):
         return {'int_info': api.GEN_QUERY_AN,
                 'data': genQueryInp.build(data)}
 
+    def listCollections(self, path=''):
+        """
+        list the collections in a collection at path
+
+        :param path: the location of the collection
+        :type path: str
+        :returns: a dictionary containing the int_info and the data
+        :rtype: dict
+        """
+        return self.genQuery('COL_COLL_NAME',
+                             'COL_COLL_OWNER_NAME',
+                             'COL_COLL_CREATE_TIME',
+                             'COL_COLL_MODIFY_TIME',
+                             'COL_COLL_TYPE',
+                             'COL_COLL_INFO1',
+                             'COL_COLL_INFO2',
+                             COL_COLL_PARENT_NAME=" = '%s'" % path)
+
     def rmcoll(self, path, recursive=False, **kwargs):
         data = Container(collName=path,
                          flags=0,

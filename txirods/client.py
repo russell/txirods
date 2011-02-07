@@ -145,14 +145,9 @@ class IRODS(IRODSChannel):
         :type path: str
         :rtype: :class:`~twisted.internet.defer.Deferred`
         """
-        return self.genQuery('COL_COLL_NAME',
-                             'COL_COLL_OWNER_NAME',
-                             'COL_COLL_CREATE_TIME',
-                             'COL_COLL_MODIFY_TIME',
-                             'COL_COLL_TYPE',
-                             'COL_COLL_INFO1',
-                             'COL_COLL_INFO2',
-                             COL_COLL_PARENT_NAME=" = '%s'" % path)
+        d = self.sendApiReq(**self.api_mapper.listCollections(path))
+        d.addBoth(self.sendNextRequest)
+        return d
 
     def genQuery(self, *select, **where):
         """
