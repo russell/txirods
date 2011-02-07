@@ -195,6 +195,41 @@ class rods20(rodsSafe):
                              'COL_D_CREATE_TIME',
                              COL_COLL_NAME=" = '%s'" % path)
 
+    def rmobj(self, objPath='', force=False, **kwargs):
+        """
+        unlink an object from the irods file system
+
+        Optional Keyword args: 'forceFlag'
+
+        :param objPath: the location of the object
+        :type objPath: str
+        :param force: force the removal of the object
+        :returns: a dictionary containing the int_info and the data
+        :rtype: dict
+        """
+        data = Container(keyValPair=Container(len=0,
+                                              keyWords=[],
+                                              values=[]),
+                         createMode=0,
+                         dataSize=0,
+                         numThreads=0,
+                         objPath=objPath,
+                         offset=0,
+                         openFlags=0,
+                         oprType=0,
+                         specColl=None)
+        if force:
+            data.keyValPair.len = data.keyValPair.len + 1
+            data.keyValPair.keyWords.append('forceFlag')
+            data.keyValPair.values.append('1')
+        for k, v in kwargs.items():
+            data.keyValPair.len = data.keyValPair.len + 1
+            data.keyValPair.keyWords.append(k)
+            data.keyValPair.values.append(v)
+
+        return {'int_info': api.DATA_OBJ_UNLINK_AN,
+                'data': dataObjInp.build(data)}
+
 
 class rods21(rods20):
     def mkcoll(self, path):

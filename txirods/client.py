@@ -252,7 +252,7 @@ class IRODS(IRODSChannel):
         d.addBoth(self.sendNextRequest)
         return d
 
-    def rmobj(self, objPath='', **kwargs):
+    def rmobj(self, objPath='', force=False):
         """
         unlink an object from the irods file system
 
@@ -264,25 +264,8 @@ class IRODS(IRODSChannel):
         :type force: bool
         :rtype: :class:`~twisted.internet.defer.Deferred`
         """
-        data = Container(keyValPair=Container(len=0,
-                                              keyWords=[],
-                                              values=[]),
-                         createMode=0,
-                         dataSize=0,
-                         numThreads=0,
-                         objPath=objPath,
-                         offset=0,
-                         openFlags=0,
-                         oprType=0,
-                         specColl=None)
-        for k, v in kwargs.items():
-            data.keyValPair.len = data.keyValPair.len + 1
-            data.keyValPair.keyWords.append(k)
-            data.keyValPair.values.append(v)
-
-        d = self.sendApiReq(int_info=api.DATA_OBJ_UNLINK_AN,
-                            data=self.api_request_map[api.DATA_OBJ_UNLINK_AN]\
-                                .build(data))
+        d = self.sendApiReq(**self.api_mapper.rmobj(objPath,
+                                                    force))
         d.addBoth(self.sendNextRequest)
         return d
 
