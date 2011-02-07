@@ -167,8 +167,8 @@ class rods20(rodsSafe):
                                                 values=[]))
         if recursive:
             data.keyValPair.len = data.keyValPair.len + 1
-            data.keyValPair.keyWords.append('recursiveOp')
-            data.keyValPair.values.append(1)
+            data.keyValPair.keyWords.append('recursiveOpr')
+            data.keyValPair.values.append('1')
         for k, v in kwargs.items():
             data.keyValPair.len = data.keyValPair.len + 1
             data.keyValPair.keyWords.append(k)
@@ -251,8 +251,8 @@ class rods21(rods20):
                                                 values=[]))
         if recursive:
             data.keyValPair.len = data.keyValPair.len + 1
-            data.keyValPair.keyWords.append('recursiveOp')
-            data.keyValPair.values.append(1)
+            data.keyValPair.keyWords.append('recursiveOpr')
+            data.keyValPair.values.append('1')
         for k, v in kwargs.items():
             data.keyValPair.len = data.keyValPair.len + 1
             data.keyValPair.keyWords.append(k)
