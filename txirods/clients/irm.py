@@ -21,7 +21,7 @@
 import sys
 import posixpath as rpath
 
-from twisted.python import log, failure
+from twisted.python import failure
 from twisted.internet import reactor
 from txirods.clients.base import IRODSClientController
 
@@ -39,18 +39,21 @@ class RmController(IRODSClientController):
             if rpath.isabs(path):
                 self.paths.append(path)
             else:
-                self.paths.append(rpath.normpath(rpath.join(self.config.irodsCwd, path)))
+                self.paths.append(rpath.normpath(
+                    rpath.join(self.config.irodsCwd, path)))
 
         if not self.paths:
             sys.exit(0)
 
-        self.flags = dict.fromkeys(opts.flags, '')
+        self.flags = dict.fromkeys(opts.flags, 1)
 
     def parseArguments(self, optp):
-        optp.add_option("-r", "--recursive", action='append_const', const='recursiveOpr',
-                        dest="flags", default=[], help="copy directories recursively")
-        optp.add_option("-f", "--force", action='append_const', const='forceFlag',
-                        dest="flags", default=[], help="force deletion of files, skipping trash")
+        optp.add_option("-r", "--recursive", action='append_const',
+                        const='recursive', dest="flags", default=[],
+                        help="copy directories recursively")
+        optp.add_option("-f", "--force", action='append_const',
+                        const='force', dest="flags", default=[],
+                        help="force deletion of files, skipping trash")
         IRODSClientController.parseArguments(self, optp)
 
     def sendCommands(self, data):
@@ -67,16 +70,18 @@ class RmController(IRODSClientController):
             d = self.sendRm(path)
             return data
         if data.objType == 'COLL_OBJ_T':
-            if not 'recursiveOpr' in self.flags:
+            if not 'recursive' in self.flags:
                 if self.paths[-1] == path:
                     self.sendDisconnect(data)
-                return failure.Failure(Exception("cannot remove `%s': Is a directory" % path))
+                return failure.Failure(
+                    Exception("cannot remove `%s': Is a directory" % path))
             else:
                 self.sendRmDir(path)
                 return data
         if self.paths[-1] == path:
             self.sendDisconnect(data)
-        return failure.Failure(Exception("remote path exists, but not sure what it is"))
+        return failure.Failure(
+            Exception("remote path exists, but not sure what it is"))
 
     def sendRmDir(self, path):
         d = self.client.rmcoll(path, **self.flags)

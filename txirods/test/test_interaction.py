@@ -36,6 +36,16 @@ class InteractionTestCase(unittest.TestCase):
         env.run('./bin/ils %s' % filename)
         env.run('./bin/irmdir %s' % filename)
 
+    def test_upload(self):
+        filename = 'testfile'
+        dirname = 'testdir'
+        env.run('dd if=/dev/random of=%s bs=1M count=2' % filename,
+                expect_stderr=True)
+        env.run('./bin/imkdir %s' % dirname)
+        env.run('./bin/iput %s %s' % (filename, dirname))
+        self.assertTrue('testfile' in str(env.run('./bin/ils %s' % dirname)))
+        env.run('./bin/irm -r %s' % dirname)
+
 #import pdb
 #pdb.set_trace()
 
