@@ -46,8 +46,5 @@ class InteractionTestCase(unittest.TestCase):
         self.assertTrue('testfile' in str(env.run('./bin/ils %s' % dirname)))
         env.run('./bin/irm -r %s' % dirname)
 
-#import pdb
-#pdb.set_trace()
-
 if __name__ == "__main__":
     unittest.runtests()
