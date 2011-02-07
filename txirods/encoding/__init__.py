@@ -90,6 +90,43 @@ class rods20(rodsSafe):
         return {'int_info': api.COLL_CREATE_AN,
                 'data': collInp.build(data)}
 
+    def genQuery(self, *select, **where):
+        """
+        list the collections in a collection at path
+
+        :param select: the columns to select from the iCAT.
+        :type select: list of str
+        :param where: keyword arguments the make up the where clause.
+        :type where: str
+        :rtype: :class:`~twisted.internet.defer.Deferred`
+        """
+        data = Container(keyValPair=Container(len=0,
+                                              keyWords=[],
+                                              values=[]),
+                         continueInx=0,
+                         inxIvalPair=Container(
+                            len=0,
+                            inx=[],
+                            value=[]),
+                         inxValPair=Container(
+                            len=0,
+                            inx=[],
+                            value=[]),
+                         maxRows=500, options=32, partialStartIndex=0)
+
+        for s in select:
+            data.inxIvalPair.len = data.inxIvalPair.len + 1
+            data.inxIvalPair.inx.append(s)
+            data.inxIvalPair.value.append(1)
+
+        for k, v in where.items():
+            data.inxValPair.len = data.inxValPair.len + 1
+            data.inxValPair.inx.append(k)
+            data.inxValPair.value.append(v)
+
+        return {'int_info': api.GEN_QUERY_AN,
+                'data': genQueryInp.build(data)}
+
     def rmcoll(self, path, recursive=False, **kwargs):
         data = Container(collName=path,
                          flags=0,

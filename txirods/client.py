@@ -170,33 +170,8 @@ class IRODS(IRODSChannel):
         :type where: str
         :rtype: :class:`~twisted.internet.defer.Deferred`
         """
-        data = Container(keyValPair=Container(len=0,
-                                              keyWords=[],
-                                              values=[]),
-                         continueInx=0,
-                         inxIvalPair=Container(
-                            len=0,
-                            inx=[],
-                            value=[]),
-                         inxValPair=Container(
-                            len=0,
-                            inx=[],
-                            value=[]),
-                         maxRows=500, options=32, partialStartIndex=0)
-
-        for s in select:
-            data.inxIvalPair.len = data.inxIvalPair.len + 1
-            data.inxIvalPair.inx.append(s)
-            data.inxIvalPair.value.append(1)
-
-        for k, v in where.items():
-            data.inxValPair.len = data.inxValPair.len + 1
-            data.inxValPair.inx.append(k)
-            data.inxValPair.value.append(v)
-
-        d = self.sendApiReq(int_info=api.GEN_QUERY_AN,
-                            data=self.api_request_map[api.GEN_QUERY_AN]\
-                                .build(data))
+        d = self.sendApiReq(**self.api_mapper.genQuery(*select,
+                                                       **where))
         d.addBoth(self.sendNextRequest)
         return d
 
