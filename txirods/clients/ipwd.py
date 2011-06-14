@@ -18,41 +18,28 @@
 #
 #############################################################################
 
-from txirods.clients.base import IRODSClientController
+from twisted.python import log
 from twisted.internet import reactor, defer
+
+from txirods.clients.base import IRODSClientController
 
 
 class PwdController(IRODSClientController):
 
     usage = """usage: %prog [options]..."""
 
-    def printResult(self, data):
+    @defer.inlineCallbacks
+    def sendCommands(self, data):
         pwd = self.config.irodsCwd
-        print pwd
-        return data
-
-    def sendConnect(self):
-        user = self.config.irodsUserName
-        zone = self.config.irodsZone
-        d = self.client.sendConnect(proxy_user=user, proxy_zone=zone,
-                                    client_zone=zone, client_user=user)
-        d.addCallbacks(self.sendAuth, self.printStacktrace)
-        d.addErrback(self.sendDisconnect)
-
-    def sendAuth(self, data):
-        d = self.client.sendAuthChallenge(self.credentials.password)
-        d.addCallbacks(self.sendPwd, self.sendDisconnect)
-
-    def sendPwd(self, data):
-        pwd = self.config.irodsCwd
-        d = self.client.objStat(pwd)
-        d.addCallbacks(self.printResult, self.printStacktrace)
-        self.sendDisconnect(data)
-        return data
+        try:
+            yield self.client.objStat(pwd)
+        except:
+            log.err()
+        else:
+            print pwd
+        yield self.client.sendDisconnect(data)
 
 
 def main(*args):
-    controller = PwdController(reactor)
-
+    PwdController(reactor)
     reactor.run()
-    return

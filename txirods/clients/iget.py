@@ -19,9 +19,15 @@
 #############################################################################
 
 import os
-import os.path
+from os.path import join
+from os.path import isabs
+from os.path import normpath
+
 import sys
-import posixpath as rpath
+from posixpath import join as rjoin
+from posixpath import isabs as risabs
+from posixpath import basename as rbasename
+from posixpath import normpath as rnormpath
 
 from twisted.python import log, filepath
 from twisted.internet import reactor, defer
@@ -41,10 +47,10 @@ class GetController(IRODSClientController):
 
         self.paths = []
         for path in args:
-            if rpath.isabs(path):
+            if risabs(path):
                 self.paths.append(path)
             else:
-                self.paths.append(rpath.normpath(rpath.join(self.config.irodsCwd, path)))
+                self.paths.append(rnormpath(rjoin(self.config.irodsCwd, path)))
 
         if not self.paths:
             sys.exit(0)
@@ -53,36 +59,29 @@ class GetController(IRODSClientController):
 
         # If the last path element is local it might be the dest
         if filepath.FilePath(args[-1]).exists():
-            self.paths.pop()
-            dest = args[-1]
-            if not rpath.isabs(dest):
-                dest = rpath.normpath(rpath.join(os.getcwd(), dest))
+            dest = self.paths.pop()
+            if not isabs(dest):
+                dest = normpath(join(os.getcwd(), dest))
             self.dest = dest
         else:
             self.dest = os.getcwd()
 
+    @defer.inlineCallbacks
     def sendCommands(self, data):
         for path in self.paths:
-            self.sendGet(path)
-
-    def sendGet(self, path):
-        d = self.client.objStat(path)
-        d.addCallbacks(self.cb_get, self.printStacktrace, [path])
-        if path == self.paths[-1]:
-            d.addErrback(self.sendDisconnect)
-        return d
-
-    def cb_get(self, data, path):
-        f = FileRecever(os.path.normpath(os.path.join(self.dest, rpath.basename(path))))
-        d = self.client.get(f, path, data.objSize)
-        d.addErrback(self.printStacktrace)
-        if self.paths[-1] == path:
-            d.addBoth(self.sendDisconnect)
-        return data
+            try:
+                data = yield self.client.objStat(path)
+            except:
+                log.err()
+            else:
+                f = FileRecever(rnormpath(rjoin(self.dest, rbasename(path))))
+                try:
+                    yield self.client.get(f, path, data.objSize)
+                except:
+                    log.err()
+        yield self.client.sendDisconnect()
 
 
 def main(*args):
-    controller = GetController(reactor)
-
+    GetController(reactor)
     reactor.run()
-    return

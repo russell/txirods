@@ -19,9 +19,11 @@
 #############################################################################
 
 import sys
-import posixpath as rpath
+from posixpath import join as rjoin
+from posixpath import isabs as risabs
+from posixpath import normpath as rnormpath
 
-from twisted.python import log, filepath, failure
+from twisted.python import log, filepath
 from twisted.internet import reactor, defer
 from twisted.protocols import basic
 
@@ -52,10 +54,9 @@ class PutController(IRODSClientController):
 
         # If the last path element isn't local it might be remote
         if not self.paths[-1].exists():
-            self.paths.pop()
-            dest = args[-1]
-            if not rpath.isabs(dest):
-                dest = rpath.normpath(rpath.join(self.config.irodsCwd, dest))
+            dest = self.paths.pop()
+            if not risabs(dest):
+                dest = rnormpath(rjoin(self.config.irodsCwd, dest))
             self.dest = dest
         else:
             self.dest = self.config.irodsCwd
@@ -65,47 +66,49 @@ class PutController(IRODSClientController):
                         help="copy directories recursively")
         IRODSClientController.parseArguments(self, optp)
 
+    @defer.inlineCallbacks
     def sendCommands(self, data):
-        d = self.client.objStat(self.dest)
-        d.addCallbacks(self.cb_checkRemotePath, self.cb_catchSingleFileUpload)
-        d.addCallbacks(self.cb_startCopy, self.printStacktrace)
-        d.addErrback(self.sendDisconnect)
-        return data
-
-    def cb_catchSingleFileUpload(self, failure):
-        if len(self.paths) == 1:
-            failure.trap(errors.USER_FILE_DOES_NOT_EXIST)
-            return self.dest
-
-    def cb_checkRemotePath(self, data):
-        if data.objType == 'DATA_OBJ_T':
-            return failure.Failure(Exception("remote file %s already exists" % self.dest))
-        if data.objType == 'COLL_OBJ_T':
-            return self.dest
-        return failure.Failure(Exception("remote path exists, but not sure what it is"))
-
-    def cb_startCopy(self, data):
-        dest = data
-        if self.paths == 1:
-            d = self.sendPut(self.paths[0], dest)
-            d.addBoth(self.sendDisconnect)
-            return data
-
-        cbs = []
-
-        def queue_copy(source, parent=''):
-            if source.isdir():
-                cbs.append(self.client.mkcoll(rpath.join(dest, parent, source.basename())))
-                for child in source.children():
-                    queue_copy(child, rpath.join(parent, source.basename()))
+        try:
+            data = yield self.client.objStat(self.dest)
+        except errors.USER_FILE_DOES_NOT_EXIST:
+            log.err()
+            if len(self.paths) == 1:
+                pass
             else:
-                cbs.append(self.sendPut(source, rpath.join(dest, parent, source.basename())))
+                log.err()
+        except:
+            log.err()
+            yield self.client.sendDisconnect()
+            return
+
+        if data.objType == 'DATA_OBJ_T':
+            log.err("remote file %s already exists" % self.dest)
+            yield self.client.sendDisconnect()
+            return
+
+        def copy(source, parent=''):
+            if source.isdir():
+                try:
+                    yield self.client.mkcoll(rjoin(self.dest, parent,
+                                                   source.basename()))
+                except:
+                    log.err()
+                    return
+
+                for child in source.children():
+                    copy(child, rjoin(parent, source.basename()))
+            else:
+                try:
+                    yield self.sendPut(source, rjoin(self.dest, parent,
+                                                     source.basename()))
+                except:
+                    log.err()
+                    return
 
         for source in self.paths:
-            queue_copy(source)
-        dl = defer.DeferredList(cbs)
-        dl.addBoth(self.sendDisconnect)
-        return data
+            copy(source)
+
+        yield self.client.sendDisconnect()
 
     def sendPut(self, localfile, remotepath):
         """
@@ -129,8 +132,7 @@ class PutController(IRODSClientController):
         fp.close()
         return data
 
-def main(*args):
-    controller = PutController(reactor)
 
+def main(*args):
+    PutController(reactor)
     reactor.run()
-    return

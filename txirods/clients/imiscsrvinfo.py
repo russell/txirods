@@ -18,22 +18,26 @@
 #
 #############################################################################
 
-from twisted.internet import reactor
+from datetime import datetime
+
+from twisted.python import log
+from twisted.internet import reactor, defer
 
 from txirods.clients.base import IRODSClientController
 
-from datetime import datetime
 
-
-class PwdController(IRODSClientController):
+class MiscServerInfoController(IRODSClientController):
 
     usage = """usage: %prog [options]..."""
 
+    @defer.inlineCallbacks
     def sendCommands(self, data):
-        d = self.client.miscServerInfo()
-        d.addCallbacks(self.printMiscServerInfo, self.printStacktrace)
-        self.sendDisconnect(data)
-        return data
+        try:
+            data = yield self.client.miscServerInfo()
+            self.printMiscServerInfo(data)
+        except:
+            log.err()
+        yield self.client.sendDisconnect(data)
 
     def printMiscServerInfo(self, data):
         if data.serverType:
@@ -45,11 +49,8 @@ class PwdController(IRODSClientController):
         print "rodsZone=%s" % data.rodsZone
         td = datetime.now() - datetime.fromtimestamp(data.serverBootTime)
         print "up %s" % ':'.join(str(td).split(':')[:2])
-        return data
 
 
 def main(*args):
-    controller = PwdController(reactor)
-
+    MiscServerInfoController(reactor)
     reactor.run()
-    return
