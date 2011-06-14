@@ -21,10 +21,10 @@
 import posixpath as rpath
 
 from twisted.python import log
-from twisted.internet import reactor
+from twisted.internet import reactor, defer
 
 from txirods.clients.base import IRODSClientController
-from twisted.internet import reactor, defer
+from txirods import errors
 
 
 class CdController(IRODSClientController):
@@ -44,25 +44,19 @@ class CdController(IRODSClientController):
         else:
             self.path = rpath.normpath(rpath.join(self.config.irodsCwd, path))
 
+    @defer.inlineCallbacks
     def sendCommands(self, data):
-        d = self.client.objStat(self.path)
-        d.addCallbacks(self.saveCwd, self.printCwd)
-        d.addErrback(self.printStacktrace)
-        d.addErrback(self.sendDisconnect)
-        return data
+        try:
+            yield self.client.objStat(self.path)
+        except errors.USER_FILE_DOES_NOT_EXIST:
+            log.err()
+        else:
+            print self.path
+            self.config.irodsCwd = self.path
+            self.config.write()
+        yield self.sendDisconnect(data)
 
-    def saveCwd(self, data):
-        self.config.irodsCwd = self.path
-        self.config.write()
-        self.sendDisconnect(data)
-        return data
-
-    def printCwd(self, data):
-        print self.path
-        return data
 
 def main(*args):
-    controller = CdController(reactor)
-
+    CdController(reactor)
     reactor.run()
-    return
