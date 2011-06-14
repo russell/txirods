@@ -20,6 +20,7 @@
 
 from getpass import getpass
 
+from twisted.python import log
 from twisted.internet import reactor, defer
 
 from txirods.clients.base import IRODSClientController
@@ -36,7 +37,7 @@ class InitController(IRODSClientController):
         try:
             yield self.client.sendAuthChallenge(self.credentials.password)
         except errors.CAT_INVALID_AUTHENTICATION:
-            print "ERROR: invalid authentication"
+            log.err()
         else:
             self.credentials.write()
         yield self.client.sendDisconnect()
