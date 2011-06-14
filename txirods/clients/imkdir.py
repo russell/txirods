@@ -20,7 +20,11 @@
 
 import posixpath as rpath
 
+from twisted.python import log
+from twisted.internet import defer
 from twisted.internet import reactor
+
+from txirods import errors
 from txirods.clients.base import IRODSClientController
 
 
@@ -31,26 +35,35 @@ class MkdirController(IRODSClientController):
     def configure(self, opts, args):
         IRODSClientController.configure(self, opts, args)
 
-        path = args[0]
-        if rpath.isabs(path):
-            self.path = path
-        else:
-            self.path = rpath.normpath(rpath.join(self.config.irodsCwd, path))
+        self.paths = []
+        for path in args:
+            if rpath.isabs(path):
+                self.paths.append(path)
+            else:
+                self.paths.append(rpath.normpath(
+                    rpath.join(self.config.irodsCwd, path)))
 
+    @defer.inlineCallbacks
     def sendCommands(self, data):
         pwd = self.config.irodsCwd
-        d = self.client.objStat(pwd)
-        d.addCallbacks(self.sendMkdir, self.printStacktrace)
-        return data
+        try:
+            yield self.client.objStat(pwd)
+        except errors.USER_FILE_DOES_NOT_EXIST:
+            log.err()
+            log.err("The current working directory doesn't exist.")
+            yield self.client.sendDisconnect()
+            return
 
-    def sendMkdir(self, data):
-        d = self.client.mkcoll(self.path)
-        d.addErrback(self.printStacktrace)
-        return self.sendDisconnect(data)
+        for path in self.paths:
+            try:
+                yield self.client.mkcoll(path)
+            except errors.CATALOG_ALREADY_HAS_ITEM_BY_THAT_NAME:
+                log.err()
+            except:
+                log.err()
+        yield self.client.sendDisconnect()
 
 
 def main(*args):
-    controller = MkdirController(reactor)
-
+    MkdirController(reactor)
     reactor.run()
-    return

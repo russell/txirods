@@ -21,7 +21,10 @@
 import time
 import posixpath as rpath
 
+from twisted.python import log
 from twisted.internet import reactor, defer
+
+from txirods import errors
 from txirods.clients.base import IRODSClientController
 
 
@@ -38,9 +41,9 @@ class PrettyPrinter(object):
         if not data:
             return
         coll_map = {'COL_COLL_NAME': 'NAME',
-                   'COL_COLL_MODIFY_TIME': 'MODIFIED',
-                   'COL_COLL_OWNER_NAME': 'OWNER',
-                  }
+                    'COL_COLL_MODIFY_TIME': 'MODIFIED',
+                    'COL_COLL_OWNER_NAME': 'OWNER',
+                    }
         for row in data:
             coll = {'TYPE': 'c', 'SIZE': '0'}
             for k, v in row.items():
@@ -105,45 +108,55 @@ class LsController(IRODSClientController):
         if not args:
             self.paths.append(self.config.irodsCwd)
 
+    @defer.inlineCallbacks
     def sendCommands(self, data):
-        cbs = []
-
         for path in self.paths:
             newline = True
             if path == self.paths[0]:
                 newline = False
             if not rpath.isabs(path):
                 path = rpath.normpath(rpath.join(self.config.irodsCwd, path))
-            d = self.client.objStat(path)
-            d.addCallbacks(self.sendListContents,
-                           self.printStacktrace, [path, newline])
-            cbs.append(d)
 
-        dl = defer.DeferredList(cbs)
-        dl.addBoth(self.sendDisconnect)
-        return data
+            try:
+                data = yield self.client.objStat(path)
+            except:
+                log.err()
+                yield self.client.sendDisconnect()
+                return
 
-    def sendListContents(self, data, path, newline=False):
-        if len(self.paths) == 1:
-            printer = PrettyPrinter()
-        else:
-            printer = PrettyPrinter(path=path, newline=newline)
+            if len(self.paths) == 1:
+                printer = PrettyPrinter()
+            else:
+                printer = PrettyPrinter(path=path, newline=newline)
 
-        d = self.client.listCollections(path)
-        d.addErrback(self.printStacktrace)
-        d.addCallback(self.parseSqlResult)
-        d.addCallback(printer.coll_table)
+            # Handle collections
+            try:
+                data = yield self.client.listCollections(path)
+            except errors.CAT_NO_ROWS_FOUND:
+                pass
+            except:
+                log.err()
+                yield self.client.sendDisconnect()
+            else:
+                data = self.parseSqlResult(data)
+                printer.coll_table(data)
 
-        d = self.client.listObjects(path)
-        d.addErrback(self.printStacktrace)
-        d.addCallback(self.parseSqlResult)
-        d.addCallback(printer.obj_table)
-        d.addCallback(printer.prettyprint)
-        return data
+            # Handle objects
+            try:
+                data = yield self.client.listObjects(path)
+            except errors.CAT_NO_ROWS_FOUND:
+                pass
+            except:
+                log.err()
+                yield self.client.sendDisconnect()
+            else:
+                data = self.parseSqlResult(data)
+                printer.obj_table(data)
+                printer.prettyprint(data)
+
+        yield self.client.sendDisconnect()
 
 
 def main(*args):
-    controller = LsController(reactor)
-
+    LsController(reactor)
     reactor.run()
-    return
