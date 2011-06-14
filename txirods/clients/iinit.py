@@ -20,30 +20,29 @@
 
 from getpass import getpass
 
-from twisted.python import log
-from twisted.internet import reactor
+from twisted.internet import reactor, defer
 
 from txirods.clients.base import IRODSClientController
-from twisted.internet import reactor, defer
+from txirods import errors
 
 
 class InitController(IRODSClientController):
 
     usage = """usage: %prog [options]..."""
 
+    @defer.inlineCallbacks
     def sendAuth(self, data):
         self.credentials.password = getpass("Password:")
-        d = self.client.sendAuthChallenge(self.credentials.password)
-        d.addCallbacks(self.savePassword, self.sendDisconnect)
-
-    def savePassword(self, data):
-        self.credentials.write()
-        self.sendDisconnect(data)
-        return data
+        try:
+            yield self.client.sendAuthChallenge(self.credentials.password)
+        except errors.CAT_INVALID_AUTHENTICATION:
+            print "ERROR: invalid authentication"
+        else:
+            self.credentials.write()
+        yield self.client.sendDisconnect()
 
 
 def main(*args):
-    controller = InitController(reactor)
-
+    InitController(reactor)
     reactor.run()
     return
