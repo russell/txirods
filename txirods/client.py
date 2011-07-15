@@ -24,7 +24,7 @@ from hashlib import md5
 from construct import Container
 from twisted.internet import reactor, defer
 from twisted.internet.protocol import ClientFactory
-from twisted.python import log, failure
+from twisted.python import log, failure, filepath
 
 from txirods import api
 from txirods.encoding import rodsSafe, get_api_mapper
@@ -172,6 +172,8 @@ class IRODS(IRODSChannel):
         :type objPath: str
         :rtype: :class:`~twisted.internet.defer.Deferred`
         """
+        if isinstance(objPath, filepath.FilePath):
+            objPath = str(objPath)
         data = Container(keyValPair=Container(len=0,
                                               keyWords=[],
                                               values=[]),

@@ -40,26 +40,29 @@ class PutController(IRODSClientController):
     def configure(self, opts, args):
         IRODSClientController.configure(self, opts, args)
 
+        if not args:
+            sys.exit(0)
+
+        # If the last path element isn't local it might be remote
+        if not filepath.FilePath(args[-1]).exists():
+            dest = args.pop()
+            if not risabs(dest):
+                dest = rnormpath(rjoin(self.config.irodsCwd, str(dest)))
+            self.dest = dest
+        else:
+            self.dest = self.config.irodsCwd
+
         self.paths = []
         for path in args:
             fp = filepath.FilePath(path)
             if fp.isdir():
                 if not opts.recursive:
-                    print "omitting directory `%s'" % path
+                    log.err("omitting directory `%s'" % path)
                     continue
-            self.paths.append(fp)
-
-        if not self.paths:
-            sys.exit(0)
-
-        # If the last path element isn't local it might be remote
-        if not self.paths[-1].exists():
-            dest = self.paths.pop()
-            if not risabs(dest):
-                dest = rnormpath(rjoin(self.config.irodsCwd, dest))
-            self.dest = dest
-        else:
-            self.dest = self.config.irodsCwd
+            if fp.exists():
+                self.paths.append(fp)
+            else:
+                log.err("omitting directory `%s'" % path)
 
     def parseArguments(self, optp):
         optp.add_option("-r", "--recursive", action='store_true',
@@ -76,16 +79,19 @@ class PutController(IRODSClientController):
                 pass
             else:
                 log.err()
+                yield self.client.sendDisconnect()
+                defer.returnValue(None)
         except:
             log.err()
             yield self.client.sendDisconnect()
-            return
+            defer.returnValue(None)
 
         if data.objType == 'DATA_OBJ_T':
             log.err("remote file %s already exists" % self.dest)
             yield self.client.sendDisconnect()
-            return
+            defer.returnValue(None)
 
+        @defer.inlineCallbacks
         def copy(source, parent=''):
             if source.isdir():
                 try:
@@ -93,7 +99,7 @@ class PutController(IRODSClientController):
                                                    source.basename()))
                 except:
                     log.err()
-                    return
+                    defer.returnValue(None)
 
                 for child in source.children():
                     copy(child, rjoin(parent, source.basename()))
@@ -103,10 +109,10 @@ class PutController(IRODSClientController):
                                                      source.basename()))
                 except:
                     log.err()
-                    return
+                    defer.returnValue(None)
 
         for source in self.paths:
-            copy(source)
+            yield copy(source)
 
         yield self.client.sendDisconnect()
 

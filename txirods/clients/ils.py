@@ -118,11 +118,11 @@ class LsController(IRODSClientController):
                 path = rpath.normpath(rpath.join(self.config.irodsCwd, path))
 
             try:
-                data = yield self.client.objStat(path)
+                yield self.client.objStat(path)
             except:
                 log.err()
                 yield self.client.sendDisconnect()
-                return
+                defer.returnValue(None)
 
             if len(self.paths) == 1:
                 printer = PrettyPrinter()
@@ -131,28 +131,29 @@ class LsController(IRODSClientController):
 
             # Handle collections
             try:
-                data = yield self.client.listCollections(path)
+                collections = yield self.client.listCollections(path)
             except errors.CAT_NO_ROWS_FOUND:
                 pass
             except:
                 log.err()
                 yield self.client.sendDisconnect()
             else:
-                data = self.parseSqlResult(data)
-                printer.coll_table(data)
+                collections = self.parseSqlResult(collections)
+                printer.coll_table(collections)
+                printer.prettyprint(collections)
 
             # Handle objects
             try:
-                data = yield self.client.listObjects(path)
+                objects = yield self.client.listObjects(path)
             except errors.CAT_NO_ROWS_FOUND:
                 pass
             except:
                 log.err()
                 yield self.client.sendDisconnect()
             else:
-                data = self.parseSqlResult(data)
-                printer.obj_table(data)
-                printer.prettyprint(data)
+                objects = self.parseSqlResult(objects)
+                printer.obj_table(objects)
+                printer.prettyprint(objects)
 
         yield self.client.sendDisconnect()
 

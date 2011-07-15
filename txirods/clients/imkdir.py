@@ -52,7 +52,7 @@ class MkdirController(IRODSClientController):
             log.err()
             log.err("The current working directory doesn't exist.")
             yield self.client.sendDisconnect()
-            return
+            defer.returnValue()
 
         for path in self.paths:
             try:
