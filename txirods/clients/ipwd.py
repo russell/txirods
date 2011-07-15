@@ -17,6 +17,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 #############################################################################
+import warnings
+warnings.filterwarnings("ignore")
 
 from twisted.python import log
 from twisted.internet import reactor, defer

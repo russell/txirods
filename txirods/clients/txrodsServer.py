@@ -17,6 +17,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 #############################################################################
+import warnings
+warnings.filterwarnings("ignore")
 
 import sys
 import logging
@@ -76,8 +78,3 @@ def main(*args):
     reactor.listenTCP(1247, rods)
     reactor.run()
     return
-
-
-
-
-

@@ -17,6 +17,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 #############################################################################
+import warnings
+warnings.filterwarnings("ignore")
 
 import posixpath as rpath
 
