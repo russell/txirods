@@ -30,21 +30,32 @@ class InteractionTestCase(unittest.TestCase):
     if not 'TXIRODS_TEST' in os.environ:
         skip = "interactive tests disabled, to enable export TXIRODS_TEST"
 
+    def setUp(self):
+        env.run('./bin/icd')
+        self.testdir = 'testdir'
+        self.testfile = "testfile"
+        env.run('./bin/irm -r %s' % self.testdir, expect_stderr=True)
+
+    def tearDown(self):
+        env.run('./bin/irm -r %s' % self.testdir, expect_stderr=True)
+
     def test_simple_collection(self):
-        filename = 'testdir'
-        env.run('./bin/imkdir %s' % filename)
-        env.run('./bin/ils %s' % filename)
-        env.run('./bin/irmdir %s' % filename)
+        env.run('./bin/imkdir %s' % self.testdir)
+        env.run('./bin/ils %s' % self.testdir)
+
+    def test_change_directory(self):
+        env.run('./bin/imkdir %s' % self.testdir)
+        pwd = env.run('./bin/ipwd')
+        env.run('./bin/icd %s' % self.testdir)
+        cwd = env.run('./bin/ipwd')
+        self.assertTrue(cwd.stdout.startswith(pwd.stdout[:-1]))
 
     def test_upload(self):
-        filename = 'testfile'
-        dirname = 'testdir'
-        env.run('dd if=/dev/random of=%s bs=1M count=2' % filename,
+        env.run('dd if=/dev/random of=%s bs=1M count=2' % self.testfile,
                 expect_stderr=True)
-        env.run('./bin/imkdir %s' % dirname)
-        env.run('./bin/iput %s %s' % (filename, dirname))
-        self.assertTrue('testfile' in str(env.run('./bin/ils %s' % dirname)))
-        env.run('./bin/irm -r %s' % dirname)
+        env.run('./bin/imkdir %s' % self.testdir)
+        env.run('./bin/iput %s %s' % (self.testfile, self.testdir))
+        self.assertTrue('testfile' in str(env.run('./bin/ils %s' % self.testdir)))
 
 if __name__ == "__main__":
     unittest.runtests()
