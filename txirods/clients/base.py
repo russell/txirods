@@ -29,6 +29,64 @@ from txirods.client import IRODSClientFactory
 from txirods.config import ConfigParser, AuthParser
 
 
+class IRODSLogger(log.DefaultObserver):
+    stdout = sys.stdout
+
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    BOLD = "\033[1m"
+    ENDC = '\033[0m'
+
+    def __init__(self, level):
+        self.level = level
+
+    def disableColors(self):
+        self.HEADER = ''
+        self.OKBLUE = ''
+        self.OKGREEN = ''
+        self.WARNING = ''
+        self.FAIL = ''
+        self.BOLD = ''
+        self.ENDC = ''
+
+    def emit(self, eventDict):
+
+        if eventDict.get("printed", False):
+            text = " ".join([str(m) for m in eventDict["message"]]) + "\n"
+            self.stdout.write(text)
+            self.stdout.flush()
+            return
+
+        if self.level != logging.DEBUG and eventDict.get("debug", False):
+            return
+
+        if eventDict["isError"]:
+            if 'failure' in eventDict:
+                text = ((eventDict.get('why') or 'Unhandled Error')
+                        + '\n' + eventDict['failure'].getTraceback())
+            else:
+                text = " ".join([str(m) for m in eventDict["message"]]) + "\n"
+            self.stderr.write(self.FAIL + text + self.ENDC)
+            self.stderr.flush()
+        else:
+            text = " ".join([str(m) for m in eventDict["message"]]) + "\n"
+
+        if self.level == logging.DEBUG and eventDict.get("debug", False):
+            self.stderr.write(self.HEADER + text + self.ENDC)
+            self.stderr.flush()
+            return
+
+        if self.level <= logging.INFO:
+            self.stderr.write(self.OKGREEN + text + self.ENDC)
+            self.stderr.flush()
+
+    def start(self):
+        log.addObserver(self.emit)
+
+
 class IRODSClientController(object):
 
     factory = IRODSClientFactory
@@ -70,11 +128,12 @@ class IRODSClientController(object):
             log_level = logging.INFO
         elif opts.verbose >= 2:
             log_level = logging.DEBUG
-            log.startLogging(sys.stdout)
+            #log.startLogging(sys.stdout)
 
         # Set up basic configuration, out to stderr with a
         # reasonable default format.
-        logging.basicConfig(level=log_level)
+        observer = IRODSLogger(log_level)
+        log.startLoggingWithObserver(observer.emit)
 
     def connectTCP(self):
         cb_connect = defer.Deferred()

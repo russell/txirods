@@ -166,7 +166,8 @@ class IRODSChannel(Protocol):
                                              'err_len': err_len,
                                              'bs_len': bs_len,
                                              'int_info': int_info})
-        log.msg("\n--------SEND\n" + header + repr(data), debug=True)
+        log.msg(header, debug=True)
+        log.msg(repr(data), debug=True)
         num = struct.pack('!L', len(header))
         self.transport.write(num + header + data)
 
@@ -174,13 +175,12 @@ class IRODSChannel(Protocol):
         if self.consumer:
             self.consumer.write(data)
             return
-        log.msg("\n--------RECIEVE\n" + repr(data), debug=True)
 
         if not self._processed_header:
             data = self.headerReceived(data)
         if not self._processed_header:
             return
-        log.msg("\n--------Data\n" + repr(data), debug=True)
+        log.msg(repr(data), debug=True, irods="data")
 
         if self.processData(data):
             return
@@ -215,6 +215,7 @@ class IRODSChannel(Protocol):
             self._processed_header = True
             self.message_len, self.error_len, self.bytestream_len = \
                 self.response.getMessageLengths()
+            log.msg(str(data[:self.header_len]), debug=True, irods="header")
 
         rawdata = data[self.header_len:]
 
@@ -295,4 +296,4 @@ class IRODSChannel(Protocol):
         """
         self._processed_header = False
         self._buffer = ''
-        log.msg("\nDONE PROCESSING\n")
+        log.msg("Done Processing Response")

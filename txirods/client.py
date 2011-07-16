@@ -18,7 +18,6 @@
 #
 #############################################################################
 
-import logging
 from hashlib import md5
 
 from construct import Container
@@ -58,7 +57,7 @@ class IRODS(IRODSChannel):
         :rtype: None
 
         """
-        log.msg('===========SEND=REQUEST============')
+        log.msg("Sending Request")
         self.nextDeferred = request.deferred
         self.request = request
 
@@ -92,8 +91,8 @@ class IRODS(IRODSChannel):
         self.api_mapper = get_api_mapper(data['relVersion'],
                                          data['apiVersion'])()
 
-        log.msg("\nFinish connection, by setting" +
-                " up api and version info\n", debug=True)
+        log.msg("Finish Connection Setup, setting" +
+                " up api and version info")
 
     def listObjects(self, path=''):
         """
@@ -297,7 +296,7 @@ class IRODS(IRODSChannel):
 
     def sendConnect(self, reconnFlag=0, connectCnt=0, proxy_user='',
                     proxy_zone='', client_user='', client_zone='', option=''):
-        log.msg("\nsendConnect\n", logging.INFO)
+        log.msg("Starting Connection Request")
         self.connect_info = {'irodsProt': self.api,
                              'reconnFlag': reconnFlag,
                              'connectCnt': connectCnt,
@@ -358,7 +357,7 @@ class IRODS(IRODSChannel):
         return d
 
     def handleAuthChallange(self, data):
-        log.msg("\nChallenge\n" + repr(data), debug=True)
+        log.msg("Received Authentication Challenge")
         MAX_PASSWORD_LEN = 50
         CHALLENGE_LEN = 64
         resp_len = CHALLENGE_LEN + MAX_PASSWORD_LEN
@@ -385,7 +384,7 @@ class IRODS(IRODSChannel):
 
     def handleAuthChallangeResponse(self, data):
         if self.response.int_info >= 0:
-            log.msg("\nSuccessfully authed\n", debug=True)
+            log.msg("Successfully Authenticated")
             self.nextDeferred.callback("Authed")
 
     def miscServerInfo(self):
@@ -397,7 +396,7 @@ class IRODS(IRODSChannel):
         """
         irods message processing
         """
-        log.msg("\nPROCESSMESSAGE\n", debug=True)
+        log.msg("Process Message", debug=True)
         if self.response.msg_type == 'RODS_API_REPLY' and \
                     self.request.int_info in self.api_reponse_map:
             try:
@@ -429,7 +428,7 @@ class IRODS(IRODSChannel):
             self.nextDeferred.callback('')
 
     def processOther(self, data):
-        log.msg("\nPROCESSOTHER\n", debug=True)
+        log.msg("Process Other", debug=True)
         if self.request.int_info == api.GSI_AUTH_REQUEST_AN:
             self.handleAuthGsi(data, True)
             return True
@@ -458,6 +457,9 @@ class IRODSClientFactory(ClientFactory):
     def __init__(self, cb_connected, cb_connection_lost):
         self.cb_connected = cb_connected
         self.cb_connection_lost = cb_connection_lost
+
+    def __repr__(self):
+        return "IRODSClientFactory"
 
     def buildProtocol(self, addr):
         protocol = ClientFactory.buildProtocol(self, addr)
