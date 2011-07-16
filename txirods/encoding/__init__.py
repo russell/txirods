@@ -25,7 +25,7 @@ from txirods import api
 from txirods.encoding.binary import rodsObjStat, genQueryOut, miscSvrInfo
 from txirods.encoding.binary import collOprStat, collInp21
 from txirods.encoding.binary import collInp, genQueryInp, dataObjInp
-from txirods.encoding.binary import connect
+from txirods.encoding.binary import connect, rError
 from txirods.encoding.rodsml import SimpleXMLParser
 
 rods2_1_generic = {
@@ -80,6 +80,9 @@ class rodsSafe(object):
 
 
 class rods20(rodsSafe):
+    def parseError(self, error):
+        return rError.parse(error)
+
     def mkcoll(self, path):
         data = Container(collName=path,
                          flags=0,

@@ -420,6 +420,11 @@ class IRODS(IRODSChannel):
             self.handleAuthChallange(data)
             return
 
+    def processError(self, data):
+        errorResponse = self.api_mapper.parseError(data)
+        for error in errorResponse["errors"]:
+            log.msg(error["msg"], isError=True)
+
     def processByteStream(self, data):
         self.bytestream_consumer.write(data)
         if self.bytestream_len == 0:

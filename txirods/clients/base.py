@@ -71,6 +71,7 @@ class IRODSLogger(log.DefaultObserver):
                 text = " ".join([str(m) for m in eventDict["message"]]) + "\n"
             self.stderr.write(self.FAIL + text + self.ENDC)
             self.stderr.flush()
+            return
         else:
             text = " ".join([str(m) for m in eventDict["message"]]) + "\n"
 
@@ -128,7 +129,6 @@ class IRODSClientController(object):
             log_level = logging.INFO
         elif opts.verbose >= 2:
             log_level = logging.DEBUG
-            #log.startLogging(sys.stdout)
 
         # Set up basic configuration, out to stderr with a
         # reasonable default format.

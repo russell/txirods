@@ -92,6 +92,16 @@ keyValPair = Struct('keyValPair',
                     IfThenElse('values', nulls,
                                MetaArray(count, CString('value')), Null_List))
 
+rErrMsg = Struct("rError",
+                 UBInt32('status'),
+                 CString('msg'))
+
+rError = Struct("rError",
+                UBInt32('len'),
+                IfThenElse('errors', nulls,
+                           MetaArray(count, rErrMsg),
+                           Null_Pointer),
+                )
 
 const_Mapper = MappingAdapter(UBInt32('const'), int_to_const, const_to_int)
 
