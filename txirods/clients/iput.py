@@ -73,10 +73,10 @@ class PutController(IRODSClientController):
 
     @defer.inlineCallbacks
     def sendCommands(self, data):
+        data = None
         try:
             data = yield self.client.objStat(self.dest)
         except errors.USER_FILE_DOES_NOT_EXIST:
-            log.err()
             if len(self.paths) == 1:
                 pass
             else:
@@ -88,17 +88,17 @@ class PutController(IRODSClientController):
             yield self.client.sendDisconnect()
             defer.returnValue(None)
 
-        if data.objType == 'DATA_OBJ_T':
+        if data and data.objType == 'DATA_OBJ_T':
             log.err("remote file %s already exists" % self.dest)
             yield self.client.sendDisconnect()
             defer.returnValue(None)
 
         @defer.inlineCallbacks
         def copy(source, parent=''):
+            path = rjoin(self.dest, parent, source.basename())
             if source.isdir():
                 try:
-                    yield self.client.mkcoll(rjoin(self.dest, parent,
-                                                   source.basename()))
+                    yield self.client.mkcoll(path)
                 except:
                     log.err()
                     defer.returnValue(None)
@@ -107,14 +107,25 @@ class PutController(IRODSClientController):
                     copy(child, rjoin(parent, source.basename()))
             else:
                 try:
-                    yield self.sendPut(source, rjoin(self.dest, parent,
-                                                     source.basename()))
+                    yield self.sendPut(source, path)
                 except:
                     log.err()
                     defer.returnValue(None)
 
-        for source in self.paths:
-            yield copy(source)
+        if len(self.paths):
+            if data and data.objType == 'COLL_OBJ_T':
+                path = rjoin(self.dest, self.paths[0].basename())
+            else:
+                path = rjoin(self.dest)
+
+            try:
+                yield self.sendPut(self.paths[0], path)
+            except:
+                log.err()
+                defer.returnValue(None)
+        else:
+            for source in self.paths:
+                yield copy(source)
 
         yield self.client.sendDisconnect()
 
