@@ -3,8 +3,8 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to txiRODS's documentation!
-===================================
+txiRODS
+=======
 
 txIRODS is an implementation of the IRODS binary protocol using python
 and the asynchronous networking tool kit Twisted. The project started
@@ -30,4 +30,3 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-

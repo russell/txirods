@@ -1,5 +1,5 @@
-Command Line Clients
-====================
+Clients
+=======
 
 Since i have no real purpose for this library i have begun extending
 it using CLI clients as a usecase.
